@@ -28,7 +28,9 @@
     "test:e2e:run": "cross-env CI=true playwright test",
     "test:e2e:install": "npx playwright install --with-deps chromium",
     "typecheck": "react-router typegen && tsc",
-    "validate": "run-p \"test -- --run\" lint typecheck test:e2e:run"
+    "validate": "run-p \"test -- --run\" lint typecheck test:e2e:run",
+    "add-articles": "node prisma/add-articles.js",
+    "add-articles:programmatic": "node prisma/add-articles-programmatic.js"
   },
   "eslintIgnore": [
     "/node_modules",

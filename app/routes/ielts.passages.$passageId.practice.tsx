@@ -1,9 +1,80 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '#app/utils/router-helpers'
 import { Form, useActionData, useLoaderData, useNavigate, useParams, useSubmit } from 'react-router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { PassageReader } from '#app/components/ielts/PassageReader'
+
+// Define interfaces for the expected data structures
+interface IeltsQuestion {
+  id: string;
+  passageId: string;
+  type: string;
+  questionText: string;
+  options: string | null;
+  correctAnswer: string;
+  explanation: string;
+  points: number;
+  orderIndex: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface IeltsPassage {
+  id: string;
+  title: string;
+  content: string;
+  difficulty: string;
+  topic: string;
+  wordCount: number;
+  source: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  questions: IeltsQuestion[];
+}
+
+interface IeltsResponse {
+  id: string;
+  attemptId: string;
+  questionId: string;
+  userAnswer: string;
+  isCorrect: boolean;
+  timeTaken: number | null;
+  createdAt: Date;
+}
+
+interface IeltsAttempt {
+  id: string;
+  userId: string;
+  passageId: string;
+  isTest: boolean;
+  startedAt: Date;
+  completedAt: Date | null;
+  totalScore: number | null;
+  maxScore: number | null;
+  timeSpent: number | null;
+  responses: IeltsResponse[];
+  passage?: {
+    questions: IeltsQuestion[];
+  };
+}
+
+interface LoaderData {
+  passage: IeltsPassage;
+  existingAttempt: IeltsAttempt | null;
+  isLoggedIn: boolean;
+}
+
+interface ActionData {
+  success?: boolean;
+  error?: string;
+  score?: number;
+  totalQuestions?: number;
+  correctAnswers?: number;
+  attempt?: IeltsAttempt;
+  response?: IeltsResponse;
+  correctAnswer?: string;
+}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const userId = await getUserId(request)
@@ -35,12 +106,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         completedAt: null,
       },
       include: {
-        answers: true,
+        responses: true,
       },
     })
   }
   
-  return json({
+  return json<LoaderData>({
     passage,
     existingAttempt,
     isLoggedIn: !!userId
@@ -99,10 +170,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return json({ error: '问题不存在' }, { status: 400 })
       }
       
-      const isCorrect = question.answer === answer
+      const isCorrect = question.correctAnswer === answer
       
       // 保存或更新答案
-      const savedAnswer = await prisma.ieltsAnswer.upsert({
+      const savedResponse = await prisma.ieltsResponse.upsert({
         where: {
           attemptId_questionId: {
             attemptId,
@@ -123,8 +194,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
       
       return json({
         success: true,
-        answer: savedAnswer,
-        correctAnswer: question.answer,
+        response: savedResponse,
+        correctAnswer: question.correctAnswer,
       })
     }
     
@@ -139,7 +210,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const attempt = await prisma.ieltsAttempt.findUnique({
         where: { id: attemptId },
         include: {
-          answers: true,
+          responses: true,
           passage: {
             include: {
               questions: true,
@@ -154,7 +225,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       
       // 计算分数
       const totalQuestions = attempt.passage.questions.length
-      const correctAnswers = attempt.answers.filter(a => a.isCorrect).length
+      const correctAnswers = attempt.responses.filter(a => a.isCorrect).length
       const score = Math.round((correctAnswers / totalQuestions) * 100)
       
       // 完成练习
@@ -162,7 +233,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         where: { id: attemptId },
         data: {
           completedAt: new Date(),
-          score,
+          totalScore: score,
         },
       })
       
@@ -170,15 +241,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
       await prisma.ieltsUserStats.upsert({
         where: { userId },
         update: {
-          attemptsCompleted: { increment: 1 },
-          totalScore: { increment: score },
+          testsCompleted: { increment: 1 },
         },
         create: {
           userId,
-          attemptsCompleted: 1,
+          testsCompleted: 1,
           readingTimeTotal: 0,
           passagesCompleted: 0,
-          totalScore: score,
+          vocabLearned: 0,
         },
       })
       
@@ -197,33 +267,40 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function PracticePage() {
-  const { passage, existingAttempt, isLoggedIn } = useLoaderData<typeof loader>()
-  const actionData = useActionData<typeof action>()
+  const data = useLoaderData<typeof loader>() as LoaderData;
+  const { passage, existingAttempt, isLoggedIn } = data;
+  const actionData = useActionData<typeof action>() as ActionData | undefined;
   const params = useParams()
   const navigate = useNavigate()
   const submit = useSubmit()
   
-  const [attempt, setAttempt] = useState(existingAttempt)
+  const [attempt, setAttempt] = useState<IeltsAttempt | null>(existingAttempt)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>(
-    existingAttempt?.answers.reduce((acc, answer) => {
-      acc[answer.questionId] = answer.userAnswer
+    existingAttempt?.responses.reduce((acc: Record<string, string>, response: IeltsResponse) => {
+      acc[response.questionId] = response.userAnswer
       return acc
-    }, {} as Record<string, string>) || {}
+    }, {}) || {}
   )
-  
   const [showResults, setShowResults] = useState(false)
   const [timer, setTimer] = useState({ minutes: 0, seconds: 0 })
   const [startTime] = useState(new Date())
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set())
+  const [highlightedText, setHighlightedText] = useState('')
+  const [showHighlightTooltip, setShowHighlightTooltip] = useState(false)
+  const [highlightPosition, setHighlightPosition] = useState({ x: 0, y: 0 })
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   
   // 获取当前问题
   const currentQuestion = passage.questions[currentQuestionIndex] || passage.questions[0]
   
   // 计时器
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date()
-      const diffMs = now.getTime() - startTime.getTime()
+    const startTime = new Date().getTime()
+    
+    const timer = setInterval(() => {
+      const now = new Date().getTime()
+      const diffMs = now - startTime
       const diffSec = Math.floor(diffMs / 1000)
       const minutes = Math.floor(diffSec / 60)
       const seconds = diffSec % 60
@@ -231,11 +308,46 @@ export default function PracticePage() {
       setTimer({ minutes, seconds })
     }, 1000)
     
-    return () => clearInterval(interval)
-  }, [startTime])
+    return () => clearInterval(timer)
+  }, [])
+  
+  // 监听文本选择事件
+  useEffect(() => {
+    const handleSelection = () => {
+      const selection = window.getSelection()
+      if (!selection || selection.isCollapsed) {
+        setShowHighlightTooltip(false)
+        return
+      }
+
+      const selectedText = selection.toString().trim()
+      if (selectedText.length > 0) {
+        setHighlightedText(selectedText)
+        
+        const range = selection.getRangeAt(0)
+        const rect = range.getBoundingClientRect()
+        
+        setHighlightPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + 10
+        })
+        
+        setShowHighlightTooltip(true)
+      }
+    }
+
+    document.addEventListener('selectionchange', handleSelection)
+    return () => document.removeEventListener('selectionchange', handleSelection)
+  }, [])
+  
+  const formatTime = (minutes: number, seconds: number) => {
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
   
   // 处理回答问题
   const handleAnswer = (answer: string) => {
+    if (!attempt || !currentQuestion) return;
+    
     // 保存到本地状态
     setUserAnswers(prev => ({
       ...prev,
@@ -255,8 +367,22 @@ export default function PracticePage() {
     })
   }
   
+  const toggleBookmark = (questionId: string) => {
+    setBookmarkedQuestions(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId)
+      } else {
+        newSet.add(questionId)
+      }
+      return newSet
+    })
+  }
+  
   // 完成测试
   const handleComplete = () => {
+    if (!attempt) return;
+    
     const form = new FormData()
     form.append('intent', 'complete-attempt')
     form.append('attemptId', attempt.id)
@@ -282,93 +408,20 @@ export default function PracticePage() {
     }
   }
   
-  // 渲染问题
-  const renderQuestion = () => {
-    const question = passage.questions[currentQuestionIndex]
-    
-    switch (question.type) {
-      case 'multiple_choice':
-        return (
-          <div>
-            <p className="mb-4">{question.text}</p>
-            <div className="space-y-2">
-              {question.options?.split('|').map((option, index) => (
-                <div key={index} className="flex items-center">
-                  <input
-                    type="radio"
-                    id={`option-${index}`}
-                    name={`question-${question.id}`}
-                    value={option}
-                    checked={userAnswers[question.id] === option}
-                    onChange={() => handleAnswer(option)}
-                    className="mr-2"
-                  />
-                  <label htmlFor={`option-${index}`}>{option}</label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      
-      case 'true_false':
-        return (
-          <div>
-            <p className="mb-4">{question.text}</p>
-            <div className="space-y-2">
-              {['TRUE', 'FALSE', 'NOT GIVEN'].map((option, index) => (
-                <div key={index} className="flex items-center">
-                  <input
-                    type="radio"
-                    id={`option-${index}`}
-                    name={`question-${question.id}`}
-                    value={option}
-                    checked={userAnswers[question.id] === option}
-                    onChange={() => handleAnswer(option)}
-                    className="mr-2"
-                  />
-                  <label htmlFor={`option-${index}`}>{option}</label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      
-      case 'fill_blank':
-        return (
-          <div>
-            <p className="mb-4">{question.text}</p>
-            <input
-              type="text"
-              value={userAnswers[question.id] || ''}
-              onChange={(e) => handleAnswer(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              placeholder="输入答案..."
-            />
-          </div>
-        )
-      
-      case 'matching':
-        return (
-          <div>
-            <p className="mb-4">{question.text}</p>
-            <select
-              value={userAnswers[question.id] || ''}
-              onChange={(e) => handleAnswer(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-            >
-              <option value="">-- 选择匹配项 --</option>
-              {question.options?.split('|').map((option, index) => (
-                <option key={index} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      
-      default:
-        return <p>不支持的问题类型</p>
-    }
+  const handleHighlight = () => {
+    console.log('高亮:', highlightedText)
+    setShowHighlightTooltip(false)
+  }
+
+  const handleAddToVocabulary = () => {
+    console.log('添加到生词本:', highlightedText)
+    setShowHighlightTooltip(false)
+    alert(`已将 "${highlightedText}" 添加到生词本`)
+  }
+  
+  // 修复ref回调函数
+  const setInputRef = (id: string, el: HTMLInputElement | null) => {
+    inputRefs.current[id] = el
   }
   
   // 显示结果页面
@@ -415,102 +468,175 @@ export default function PracticePage() {
         <div className="fixed top-4 right-4 bg-white shadow-md rounded-lg px-4 py-2 z-50">
           <span className="font-medium">用时: </span>
           <span className="text-gray-800 font-mono">
-            {timer.minutes} 分 {timer.seconds} 秒
+            {formatTime(timer.minutes, timer.seconds)}
           </span>
         </div>
 
         {/* 阅读考试指导 */}
         <div className="bg-gray-100 border border-gray-200 p-4 mb-6 rounded-md">
-          <h2 className="font-bold text-lg">雅思阅读练习</h2>
-          <p className="text-gray-700">完成所有问题以测试您的阅读理解能力。</p>
+          <h2 className="font-bold text-lg">Part 1</h2>
+          <p className="text-gray-700">You should spend about 20 minutes on Questions 1-{passage.questions.length}, which are based on Reading Passage 1.</p>
         </div>
 
         {/* 主内容区 - 左右两栏布局 */}
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
           {/* 左侧阅读文章 - 添加固定高度和滚动 */}
-          <div className="lg:w-1/2 h-full overflow-hidden flex flex-col bg-white rounded-lg shadow-md">
-            <div className="p-6 border-b">
-              <h1 className="text-2xl font-bold text-gray-800">{passage.title}</h1>
-              <div className="flex justify-between items-center mt-2 text-sm text-gray-600">
-                <span>
-                  用时: {timer.minutes} 分 {timer.seconds} 秒
-                </span>
-                <span>
-                  单词: {passage.wordCount}
-                </span>
-              </div>
-            </div>
-            
-            <div className="overflow-y-auto p-6 flex-grow">
+          <div className="lg:w-1/2 h-full overflow-hidden flex flex-col">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">{passage.title}</h1>
+            <div className="overflow-y-auto pr-4 flex-grow">
               <PassageReader 
                 content={passage.content} 
                 showParagraphNumbers={true}
               />
             </div>
+            
+            {/* 文本高亮工具提示 */}
+            {showHighlightTooltip && (
+              <div 
+                className="fixed bg-white shadow-lg rounded-lg p-2 z-50 flex gap-2"
+                style={{
+                  left: `${highlightPosition.x}px`,
+                  top: `${highlightPosition.y}px`,
+                  transform: 'translateX(-50%)'
+                }}
+              >
+                <button 
+                  className="text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded"
+                  onClick={handleHighlight}
+                >
+                  高亮标记
+                </button>
+                <button 
+                  className="text-xs bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded"
+                  onClick={handleAddToVocabulary}
+                >
+                  添加到生词本
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 右侧问题区域 - 添加固定高度和滚动 */}
-          <div className="lg:w-1/2 bg-white rounded-lg shadow-md h-full flex flex-col overflow-hidden">
-            {/* 题目标题区域 - 固定在顶部 */}
-            <div className="p-6 border-b">
-              <div className="flex justify-between items-center">
-                <h2 className="font-bold text-lg">问题 {currentQuestionIndex + 1}/{passage.questions.length}</h2>
-                <div className="flex gap-2">
-                  {passage.questions.map((q, index) => (
-                    <button
-                      key={q.id}
-                      onClick={() => setCurrentQuestionIndex(index)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        currentQuestionIndex === index
-                          ? 'bg-blue-500 text-white'
-                          : userAnswers[q.id]
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100'
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
+          <div className="lg:w-1/2 bg-white p-6 rounded-lg shadow-md h-full flex flex-col overflow-hidden">
+            {/* 问题导航 */}
+            <div className="mb-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold">问题 {currentQuestionIndex + 1}/{passage.questions.length}</h2>
+              
+              <div className="flex gap-1">
+                {passage.questions.map((q, index) => (
+                  <button
+                    key={q.id}
+                    onClick={() => setCurrentQuestionIndex(index)}
+                    className={`size-8 rounded-full flex items-center justify-center ${
+                      currentQuestionIndex === index 
+                        ? 'bg-blue-600 text-white'
+                        : userAnswers[q.id]
+                        ? 'bg-green-100 text-green-800 border border-green-500'
+                        : 'bg-gray-100'
+                    }`}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
               </div>
             </div>
+            
+            <div className="mb-4">
+              <p className="mb-2">完成下面的笔记。</p>
+              <p className="mb-4 font-bold">
+                从文章中选择 <span className="underline">每空一个单词</span> 填入。
+              </p>
+            </div>
 
-            {/* 题目内容区域 - 可滚动 */}
-            <div className="overflow-y-auto p-6 flex-grow">
-              {renderQuestion()}
+            <div className="overflow-y-auto pr-4 flex-grow">
+              <div className="mb-8">
+                <h3 className="text-lg font-bold mb-4">{passage.title}</h3>
+                
+                <h4 className="font-bold mb-2">填空题</h4>
+                <ul className="space-y-4">
+                  {passage.questions.map((question, index) => (
+                    <li key={question.id} className="flex items-start gap-2">
+                      <span className="text-gray-500">•</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{question.questionText}</span>
+                          <button 
+                            className={`ml-2 ${bookmarkedQuestions.has(question.id) ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500`}
+                            onClick={() => toggleBookmark(question.id)}
+                            title={bookmarkedQuestions.has(question.id) ? "移除书签" : "添加书签"}
+                          >
+                            ★
+                          </button>
+                        </div>
+                        
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <input
+                            ref={el => setInputRef(question.id, el)}
+                            type="text"
+                            className="border border-gray-300 rounded-md px-2 py-1 w-32 text-center"
+                            value={userAnswers[question.id] || ''}
+                            onChange={(e) => handleAnswer(e.target.value)}
+                            maxLength={15}
+                          />
+                        </div>
+                        
+                        {/* 显示正确答案的反馈 */}
+                        {actionData?.correctAnswer && userAnswers[question.id] && (
+                          <div className="mt-2 text-sm text-red-600">
+                            正确答案: {actionData.correctAnswer}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
             {/* 底部导航按钮 - 固定在底部 */}
-            <div className="p-6 border-t flex justify-between">
+            <div className="mt-4 pt-4 border-t flex justify-between">
               <div>
-                <button
-                  onClick={goToPrevQuestion}
+                <button 
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 mr-2"
                   disabled={currentQuestionIndex === 0}
-                  className={`px-4 py-2 rounded ${
-                    currentQuestionIndex === 0
-                      ? 'bg-gray-200 text-gray-500'
-                      : 'bg-gray-500 text-white hover:bg-gray-600'
-                  }`}
+                  onClick={goToPrevQuestion}
                 >
                   上一题
                 </button>
+                
+                {currentQuestionIndex < passage.questions.length - 1 ? (
+                  <button 
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
+                    onClick={goToNextQuestion}
+                  >
+                    下一题
+                  </button>
+                ) : (
+                  <button 
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    onClick={handleComplete}
+                  >
+                    提交答案
+                  </button>
+                )}
               </div>
               
-              {currentQuestionIndex === passage.questions.length - 1 ? (
-                <button
-                  onClick={handleComplete}
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                >
-                  完成测试
-                </button>
-              ) : (
-                <button
-                  onClick={goToNextQuestion}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  下一题
-                </button>
-              )}
+              {/* 导航指示器 */}
+              <div className="flex justify-end gap-1">
+                {passage.questions.map((question, index) => (
+                  <button
+                    key={question.id}
+                    className={`size-6 rounded-full flex items-center justify-center border ${
+                      currentQuestionIndex === index ? 'bg-blue-600 text-white' : 
+                      bookmarkedQuestions.has(question.id) ? 'bg-yellow-100 border-yellow-500' :
+                      userAnswers[question.id] ? 'bg-gray-200' : 'bg-white'
+                    }`}
+                    onClick={() => setCurrentQuestionIndex(index)}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

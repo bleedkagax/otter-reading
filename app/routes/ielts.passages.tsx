@@ -1,183 +1,118 @@
 import { json, type LoaderFunctionArgs } from '#app/utils/router-helpers'
-import { Link, Outlet, useLoaderData, useSearchParams } from 'react-router'
+import { Link, Outlet, useLoaderData } from 'react-router'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
+
+interface IeltsPassage {
+  id: string
+  title: string
+  content: string
+  difficulty: string
+  topic: string
+  wordCount: number
+  source: string | null
+}
+
+interface LoaderData {
+  passages: IeltsPassage[]
+}
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request)
   
-  const url = new URL(request.url)
-  const topic = url.searchParams.get('topic')
-  const difficulty = url.searchParams.get('difficulty')
-  const search = url.searchParams.get('search')
-  
-  // 构建查询条件
-  const where: any = {}
-  
-  if (topic) {
-    where.topic = topic
-  }
-  
-  if (difficulty) {
-    where.difficulty = difficulty
-  }
-  
-  if (search) {
-    where.OR = [
-      { title: { contains: search } },
-      { content: { contains: search } },
-    ]
-  }
-  
-  // 获取所有文章
+  // 获取所有文章，按照难度和主题排序
   const passages = await prisma.ieltsPassage.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [
+      { difficulty: 'asc' },
+      { topic: 'asc' },
+      { createdAt: 'desc' }
+    ],
   })
   
-  // 获取所有主题和难度级别（用于筛选）
-  const topics = await prisma.ieltsPassage.findMany({
-    select: { topic: true },
-    distinct: ['topic'],
-  })
-  
-  const difficulties = await prisma.ieltsPassage.findMany({
-    select: { difficulty: true },
-    distinct: ['difficulty'],
-  })
-  
-  return json({
+  return json<LoaderData>({
     passages,
-    topics: topics.map(t => t.topic),
-    difficulties: difficulties.map(d => d.difficulty),
   })
 }
 
 export default function IeltsPassages() {
-  const { passages, topics, difficulties } = useLoaderData<typeof loader>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const { passages } = useLoaderData<typeof loader>() as LoaderData
   
-  const selectedTopic = searchParams.get('topic') || ''
-  const selectedDifficulty = searchParams.get('difficulty') || ''
-  const searchQuery = searchParams.get('search') || ''
-  
-  // 更新筛选条件
-  const updateFilter = (key: string, value: string) => {
-    const newParams = new URLSearchParams(searchParams)
-    if (value) {
-      newParams.set(key, value)
-    } else {
-      newParams.delete(key)
+  // 获取文章难度对应的颜色和标签
+  const getDifficultyDetails = (difficulty: string) => {
+    switch(difficulty) {
+      case 'easy':
+        return { color: 'bg-green-100 text-green-800', label: '简单' };
+      case 'medium':
+        return { color: 'bg-yellow-100 text-yellow-800', label: '中等' };
+      case 'hard':
+        return { color: 'bg-red-100 text-red-800', label: '困难' };
+      default:
+        return { color: 'bg-gray-100 text-gray-800', label: difficulty };
     }
-    setSearchParams(newParams)
-  }
+  };
   
   return (
     <div>
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h1 className="text-2xl font-bold mb-6">雅思阅读文章库</h1>
         
-        {/* 筛选区域 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div>
-            <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-1">主题</label>
-            <select
-              id="topic"
-              value={selectedTopic}
-              onChange={e => updateFilter('topic', e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="">全部主题</option>
-              {topics.map(topic => (
-                <option key={topic} value={topic}>{topic}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">难度</label>
-            <select
-              id="difficulty"
-              value={selectedDifficulty}
-              onChange={e => updateFilter('difficulty', e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="">全部难度</option>
-              {difficulties.map(difficulty => (
-                <option key={difficulty} value={difficulty}>{difficulty}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="md:col-span-2">
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">搜索</label>
-            <div className="flex">
-              <input
-                type="text"
-                id="search"
-                value={searchQuery}
-                onChange={e => updateFilter('search', e.target.value)}
-                placeholder="搜索文章标题或内容..."
-                className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-              <button
-                onClick={() => updateFilter('search', searchQuery)}
-                className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600"
-              >
-                搜索
-              </button>
-            </div>
-          </div>
-        </div>
-        
         {/* 文章列表 */}
         {passages.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {passages.map(passage => (
-              <div key={passage.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <h3 className="font-medium text-lg mb-2">{passage.title}</h3>
-                <div className="flex justify-between text-sm mb-3">
-                  <span className="text-gray-600">
-                    难度: <span className={`font-medium 
-                      ${passage.difficulty === 'easy' ? 'text-green-600' : 
-                        passage.difficulty === 'medium' ? 'text-yellow-600' : 'text-red-600'}`}>
-                      {passage.difficulty}
-                    </span>
-                  </span>
-                  <span className="text-gray-600">{passage.wordCount} 词</span>
-                </div>
-                <p className="text-gray-700 mb-4 line-clamp-2">
-                  {passage.content.slice(0, 150)}...
-                </p>
-                <div className="flex justify-between items-center">
-                  <span className="bg-gray-100 px-2 py-1 rounded text-xs">{passage.topic}</span>
-                  <div className="flex gap-2">
-                    <Link
-                      to={`/ielts/passages/${passage.id}/read`}
-                      className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-                    >
-                      阅读
-                    </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {passages.map(passage => {
+              const difficultyDetails = getDifficultyDetails(passage.difficulty);
+              return (
+                <div key={passage.id} className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 flex flex-col">
+                  {/* 文章卡片顶部彩带 */}
+                  <div className={`h-2 w-full ${passage.difficulty === 'easy' ? 'bg-gradient-to-r from-green-400 to-green-500' : 
+                    passage.difficulty === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 
+                    'bg-gradient-to-r from-red-400 to-red-500'}`}></div>
+                  
+                  <div className="p-5 flex-grow">
+                    {/* 文章标题和话题标签 */}
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-bold text-lg text-gray-800 leading-tight">{passage.title}</h3>
+                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full font-medium">{passage.topic}</span>
+                    </div>
+                    
+                    {/* 文章预览 */}
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      {passage.content.slice(0, 180)}...
+                    </p>
+                    
+                    {/* 文章信息 */}
+                    <div className="flex items-center gap-3 mt-auto">
+                      <span className={`${difficultyDetails.color} text-xs px-2.5 py-1 rounded-full font-medium`}>
+                        {difficultyDetails.label}
+                      </span>
+                      <span className="text-gray-500 text-xs flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                        </svg>
+                        {passage.wordCount} 词
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* 卡片底部操作按钮 */}
+                  <div className="bg-gray-50 p-4 border-t border-gray-100">
                     <Link
                       to={`/ielts/passages/${passage.id}/practice`}
-                      className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-medium flex items-center justify-center hover:from-blue-600 hover:to-indigo-700 transition-colors shadow-sm"
                     >
-                      练习
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      开始练习
                     </Link>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-10">
-            <p className="text-gray-500 mb-4">没有找到符合条件的文章</p>
-            <button
-              onClick={() => setSearchParams({})}
-              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-            >
-              清除筛选条件
-            </button>
+            <p className="text-gray-500">没有可用的文章</p>
           </div>
         )}
       </div>
