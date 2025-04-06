@@ -27,6 +27,13 @@ model User {
   sessions    Session[]
   connections Connection[]
   passkey     Passkey[]
+  
+  // 雅思阅读模块用户相关关系
+  ieltsAttempts       IeltsAttempt[]
+  ieltsUserVocabulary IeltsUserVocabulary[]
+  ieltsReadingLogs    IeltsReadingLog[]
+  ieltsStudyPlans     IeltsStudyPlan[]
+  ieltsUserStats      IeltsUserStats?
 }
 
 model Note {
@@ -183,4 +190,178 @@ model Passkey {
   transports     String? // Stored as comma-separated values
 
   @@index(userId)
+}
+
+// 雅思阅读模块数据模型
+
+// 阅读文章
+model IeltsPassage {
+  id           String   @id @default(cuid())
+  title        String
+  content      String
+  difficulty   String   // "easy", "medium", "hard"
+  topic        String
+  wordCount    Int
+  source       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // 关联
+  questions    IeltsQuestion[]
+  attempts     IeltsAttempt[]
+  userVocabs   IeltsUserVocabulary[]
+  readingLogs  IeltsReadingLog[]
+}
+
+// 阅读题目
+model IeltsQuestion {
+  id            String   @id @default(cuid())
+  passageId     String
+  passage       IeltsPassage @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  type          String   // "multiple-choice", "true-false-ng", "matching", "fill-blank", "short-answer"
+  questionText  String
+  options       String?  // JSON 格式存储选项
+  correctAnswer String
+  explanation   String
+  points        Int      @default(1)
+  orderIndex    Int      // 在文章中的顺序
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // 关联
+  responses    IeltsResponse[]
+  
+  // 索引
+  @@index([passageId])
+  @@index([type])
+}
+
+// 用户练习会话
+model IeltsAttempt {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passageId    String
+  passage      IeltsPassage @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  isTest       Boolean  @default(false)  // 是否为测试模式
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  totalScore   Float?
+  maxScore     Int?
+  timeSpent    Int?     // 耗时（秒）
+  
+  // 关联
+  responses    IeltsResponse[]
+  
+  // 索引
+  @@index([userId])
+  @@index([passageId])
+  @@index([userId, completedAt])
+}
+
+// 用户题目作答
+model IeltsResponse {
+  id           String   @id @default(cuid())
+  attemptId    String
+  attempt      IeltsAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     IeltsQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userAnswer   String
+  isCorrect    Boolean
+  timeTaken    Int?     // 该题耗时（秒）
+  createdAt    DateTime @default(now())
+  
+  // 索引
+  @@index([attemptId])
+  @@index([questionId])
+  @@unique([attemptId, questionId])
+}
+
+// 用户词汇表
+model IeltsUserVocabulary {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word         String
+  translation  String?
+  context      String?
+  note         String?
+  passageId    String?
+  passage      IeltsPassage? @relation(fields: [passageId], references: [id], onDelete: SetNull)
+  mastered     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  lastReviewed DateTime?
+  reviewCount  Int      @default(0)
+  
+  // 索引
+  @@index([userId])
+  @@index([userId, word])
+  @@unique([userId, word])
+}
+
+// 阅读日志
+model IeltsReadingLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passageId    String
+  passage      IeltsPassage @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  progress     Float?   // 阅读进度百分比
+  
+  // 索引
+  @@index([userId])
+  @@index([passageId])
+}
+
+// 学习计划
+model IeltsStudyPlan {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetScore  Float
+  weeklyGoal   Int      // 每周目标小时数
+  startDate    DateTime
+  targetDate   DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // 关联
+  tasks        IeltsStudyTask[]
+  
+  // 索引
+  @@index([userId])
+}
+
+// 学习任务
+model IeltsStudyTask {
+  id           String   @id @default(cuid())
+  planId       String
+  plan         IeltsStudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  taskType     String   // "reading", "vocabulary", "practice", "test"
+  description  String
+  status       String   @default("pending") // "pending", "in-progress", "completed"
+  dueDate      DateTime?
+  completedAt  DateTime?
+  passageId    String?
+  
+  // 索引
+  @@index([planId])
+  @@index([status])
+}
+
+// 用户统计数据
+model IeltsUserStats {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readingTimeTotal  Int      @default(0)  // 总阅读时间（分钟）
+  passagesCompleted Int      @default(0)  // 完成的文章数
+  testsCompleted    Int      @default(0)  // 完成的测试数
+  avgAccuracy       Float?   // 平均准确率
+  vocabLearned      Int      @default(0)  // 学习的单词数
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

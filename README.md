@@ -1,54 +1,151 @@
-<div align="center">
-  <h1 align="center"><a href="https://www.epicweb.dev/epic-stack">The Epic Stack 🚀</a></h1>
-  <strong align="center">
-    Ditch analysis paralysis and start shipping Epic Web apps.
-  </strong>
-  <p>
-    This is an opinionated project starter and reference that allows teams to
-    ship their ideas to production faster and on a more stable foundation based
-    on the experience of <a href="https://kentcdodds.com">Kent C. Dodds</a> and
-    <a href="https://github.com/epicweb-dev/epic-stack/graphs/contributors">contributors</a>.
-  </p>
-</div>
+# Epic Stack Template
 
-```sh
-npx epicli
-```
+This project is built on the Epic Stack, a comprehensive full-stack JavaScript/TypeScript solution for building web applications.
 
-[![The Epic Stack](https://github-production-user-asset-6210df.s3.amazonaws.com/1500684/246885449-1b00286c-aa3d-44b2-9ef2-04f694eb3592.png)](https://www.epicweb.dev/epic-stack)
+## Architecture Overview
 
-[The Epic Stack](https://www.epicweb.dev/epic-stack)
+This application follows a modern web architecture with:
 
-<hr />
+- **Frontend**: React with React Router for client-side navigation
+- **Backend**: Node.js with Express
+- **Database**: SQLite via Prisma ORM
+- **Authentication**: Custom auth with GitHub OAuth integration
+- **File Storage**: S3-compatible storage via Tigris Object Storage
+- **Monitoring**: Sentry for error tracking and performance monitoring
 
-## Watch Kent's Introduction to The Epic Stack
+## Key Dependencies
 
-[![Epic Stack Talk slide showing Flynn Rider with knives, the text "I've been around and I've got opinions" and Kent speaking in the corner](https://github-production-user-asset-6210df.s3.amazonaws.com/1500684/277818553-47158e68-4efc-43ae-a477-9d1670d4217d.png)](https://www.epicweb.dev/talks/the-epic-stack)
+### Core Framework
+- React Router v7 for routing
+- Prisma for database ORM
+- Conform for form validation
+- Zod for schema validation
 
-["The Epic Stack" by Kent C. Dodds](https://www.epicweb.dev/talks/the-epic-stack)
+### UI Components
+- Radix UI for accessible component primitives
+- Tailwind CSS for styling
+- Custom icon spritesheet system
 
-## Docs
+### Development Tools
+- Vite for development and building
+- TypeScript for type safety
+- Vitest for unit testing
+- Playwright for end-to-end testing
 
-[Read the docs](https://github.com/epicweb-dev/epic-stack/blob/main/docs)
-(please 🙏).
+## Deployment Options
 
-## Support
+### Local Development
 
-- 🆘 Join the
-  [discussion on GitHub](https://github.com/epicweb-dev/epic-stack/discussions)
-  and the [KCD Community on Discord](https://kcd.im/discord).
-- 💡 Create an
-  [idea discussion](https://github.com/epicweb-dev/epic-stack/discussions/new?category=ideas)
-  for suggestions.
-- 🐛 Open a [GitHub issue](https://github.com/epicweb-dev/epic-stack/issues) to
-  report a bug.
+1. **Setup Environment**:
+   ```bash
+   # Clone the repository
+   git clone <repository-url>
+   cd epic-stack-template
+   
+   # Copy environment variables
+   cp .env.example .env
+   
+   # Install dependencies
+   npm install
+   
+   # Setup database
+   npm run setup
+   ```
 
-## Branding
+2. **Run Development Server**:
+   ```bash
+   # With mocks enabled
+   npm run dev
+   
+   # Without mocks
+   npm run dev:no-mocks
+   ```
 
-Want to talk about the Epic Stack in a blog post or talk? Great! Here are some
-assets you can use in your material:
-[EpicWeb.dev/brand](https://epicweb.dev/brand)
+3. **Testing**:
+   ```bash
+   # Run unit tests
+   npm test
+   
+   # Run E2E tests
+   npm run test:e2e
+   ```
 
-## Thanks
+### Docker Deployment
 
-You rock 🪨
+1. **Build Docker Image**:
+   ```bash
+   docker build -t epic-stack-app .
+   ```
+
+2. **Run Container**:
+   ```bash
+   docker run -p 3000:3000 --env-file .env epic-stack-app
+   ```
+
+3. **Docker Compose** (for multi-container setup):
+   ```bash
+   docker-compose up -d
+   ```
+
+### Remote Deployment
+
+1. **Fly.io Deployment**:
+   ```bash
+   # Install Fly CLI
+   curl -L https://fly.io/install.sh | sh
+   
+   # Login to Fly
+   fly auth login
+   
+   # Deploy the application
+   fly launch
+   fly deploy
+   
+   # Set secrets
+   fly secrets set SESSION_SECRET=your-secret-value
+   ```
+
+2. **Vercel/Netlify Deployment**:
+   - Connect your GitHub repository
+   - Configure build settings:
+     - Build command: `npm run build`
+     - Output directory: `build`
+   - Set environment variables in the platform dashboard
+
+3. **Custom VPS Deployment**:
+   ```bash
+   # Build the application
+   npm run build
+   
+   # Start production server
+   npm start
+   ```
+
+## Environment Configuration
+
+Key environment variables (see `.env.example` for full list):
+- `DATABASE_URL`: SQLite database connection string
+- `SESSION_SECRET`: Secret for session encryption
+- `GITHUB_CLIENT_ID` & `GITHUB_CLIENT_SECRET`: GitHub OAuth credentials
+- AWS/S3 credentials for file storage
+- `SENTRY_DSN`: Sentry monitoring configuration
+
+## Development Best Practices
+
+1. **Code Style**:
+   - Run `npm run format` to format code with Prettier
+   - Run `npm run lint` to check for linting issues
+
+2. **Type Safety**:
+   - Run `npm run typecheck` to verify TypeScript types
+
+3. **Testing**:
+   - Write unit tests with Vitest
+   - Create E2E tests with Playwright
+
+4. **Validation**:
+   - Run `npm run validate` to run all checks before committing
+
+5. **Database Changes**:
+   - Use Prisma migrations for database schema changes
+

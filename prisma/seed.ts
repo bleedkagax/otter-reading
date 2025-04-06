@@ -9,6 +9,283 @@ import {
 } from '#tests/db-utils.ts'
 import { insertGitHubUser } from '#tests/mocks/github.ts'
 
+// 添加雅思阅读文章的种子数据函数
+async function seedIeltsData() {
+	console.log('🌱 Seeding IELTS data...')
+
+	// 创建雅思阅读文章
+	const passages = [
+		{
+			title: 'The Impact of Climate Change on Coral Reefs',
+			content: `Coral reefs, often referred to as the "rainforests of the sea," are among the most diverse and valuable ecosystems on Earth. They provide habitats for a wide variety of marine organisms and protect coastlines from storms and erosion. However, these delicate ecosystems are under severe threat from climate change and other human-induced stressors.
+
+Rising sea temperatures, primarily caused by global warming, lead to coral bleaching—a process where corals expel the symbiotic algae living in their tissues, causing them to turn completely white. Without these algae, which provide corals with nutrients and their vibrant colors, corals often die from starvation, disease, or other stressors.
+
+Ocean acidification, another consequence of increased carbon dioxide in the atmosphere, reduces the ability of coral organisms to form their calcium carbonate skeletons. This makes it harder for them to grow and recover from disturbances. According to recent studies, if current trends continue, over 90% of coral reefs may be threatened by 2050.
+
+Conservation efforts are underway globally to protect these vital ecosystems. Marine protected areas, reduced coastal pollution, and sustainable fishing practices are some of the management strategies being implemented. Additionally, innovative approaches such as coral restoration projects and assisted evolution research aim to enhance coral resilience to changing conditions.
+
+However, scientists emphasize that the most effective way to protect coral reefs in the long term is to address the root cause: reducing greenhouse gas emissions to mitigate climate change impacts. Without significant action to curb global warming, coral reefs as we know them may cease to exist by the end of this century.`,
+			difficulty: 'medium',
+			topic: 'Environment',
+			wordCount: 250,
+			source: 'Academic Journal',
+			questions: [
+				{
+					type: 'true-false-ng',
+					questionText: 'Coral bleaching is primarily caused by ocean pollution.',
+					options: null,
+					correctAnswer: 'FALSE',
+					explanation: 'According to the passage, coral bleaching is primarily caused by rising sea temperatures due to global warming, not ocean pollution.',
+					points: 1,
+					orderIndex: 1
+				},
+				{
+					type: 'true-false-ng',
+					questionText: 'Over 90% of coral reefs may be threatened by 2050 if current trends continue.',
+					options: null,
+					correctAnswer: 'TRUE',
+					explanation: 'The passage states: "According to recent studies, if current trends continue, over 90% of coral reefs may be threatened by 2050."',
+					points: 1,
+					orderIndex: 2
+				},
+				{
+					type: 'multiple-choice',
+					questionText: 'Which of the following is described as the most effective way to protect coral reefs in the long term?',
+					options: JSON.stringify([
+						'Creating marine protected areas',
+						'Implementing coral restoration projects',
+						'Reducing greenhouse gas emissions',
+						'Developing sustainable fishing practices'
+					]),
+					correctAnswer: 'Reducing greenhouse gas emissions',
+					explanation: 'The passage states: "scientists emphasize that the most effective way to protect coral reefs in the long term is to address the root cause: reducing greenhouse gas emissions to mitigate climate change impacts."',
+					points: 1,
+					orderIndex: 3
+				},
+				{
+					type: 'multiple-choice',
+					questionText: 'What does ocean acidification affect in coral organisms?',
+					options: JSON.stringify([
+						'Their ability to photosynthesize',
+						'Their ability to form calcium carbonate skeletons',
+						'Their ability to attract symbiotic algae',
+						'Their ability to reproduce'
+					]),
+					correctAnswer: 'Their ability to form calcium carbonate skeletons',
+					explanation: 'The passage states: "Ocean acidification, another consequence of increased carbon dioxide in the atmosphere, reduces the ability of coral organisms to form their calcium carbonate skeletons."',
+					points: 1,
+					orderIndex: 4
+				}
+			]
+		},
+		{
+			title: 'The History and Evolution of Writing Systems',
+			content: `The development of writing represents one of humanity's most significant intellectual achievements. From its earliest beginnings to modern digital text, writing has transformed how humans communicate, preserve knowledge, and organize societies.
+
+The earliest writing systems emerged independently in several regions around 3500-3000 BCE. Cuneiform, developed by the Sumerians in ancient Mesopotamia (modern-day Iraq), is generally considered the first writing system. Initially pictographic, it evolved into a more abstract system of wedge-shaped marks pressed into clay tablets. Around the same time, ancient Egyptians developed hieroglyphics, a system that combined logographic, syllabic, and alphabetic elements.
+
+Chinese writing, which appeared around 1600 BCE, took a different evolutionary path. Unlike other ancient scripts that eventually disappeared, Chinese characters have maintained continuous use for over 3,000 years, making it the oldest writing system still in use today. While undergoing modifications, the basic principles remain intact.
+
+The Phoenician alphabet, developed around 1200 BCE in the eastern Mediterranean, marked a revolutionary step. With just 22 consonant letters, it was simpler to learn than earlier systems and could represent multiple languages. This efficiency led to its widespread adoption and adaptation by various cultures, including the Greeks, who added vowels to create the first complete alphabet.
+
+The Romans later adapted the Greek alphabet, creating Latin letters that form the basis of today's Western alphabets. Meanwhile, other writing systems continued to develop independently, such as Brahmic scripts in India, which gave rise to many South and Southeast Asian writing systems.
+
+In the digital age, writing has undergone further transformation. Unicode, a computing standard that assigns a unique number to every character regardless of platform or language, now enables digital representation of virtually all writing systems, preserving linguistic diversity in the digital realm.`,
+			difficulty: 'hard',
+			topic: 'History',
+			wordCount: 280,
+			source: 'Academic Journal',
+			questions: [
+				{
+					type: 'multiple-choice',
+					questionText: 'When did the earliest writing systems emerge?',
+					options: JSON.stringify([
+						'Around 5000 BCE',
+						'Around 3500-3000 BCE',
+						'Around 1600 BCE',
+						'Around 1200 BCE'
+					]),
+					correctAnswer: 'Around 3500-3000 BCE',
+					explanation: 'The passage states: "The earliest writing systems emerged independently in several regions around 3500-3000 BCE."',
+					points: 1,
+					orderIndex: 1
+				},
+				{
+					type: 'true-false-ng',
+					questionText: 'Chinese writing has been in continuous use for over 3,000 years.',
+					options: null,
+					correctAnswer: 'TRUE',
+					explanation: 'The passage states: "Chinese characters have maintained continuous use for over 3,000 years, making it the oldest writing system still in use today."',
+					points: 1,
+					orderIndex: 2
+				},
+				{
+					type: 'true-false-ng',
+					questionText: 'The Phoenician alphabet contained both consonants and vowels.',
+					options: null,
+					correctAnswer: 'FALSE',
+					explanation: 'According to the passage, the Phoenician alphabet had "just 22 consonant letters" and it was the Greeks who "added vowels to create the first complete alphabet."',
+					points: 1,
+					orderIndex: 3
+				},
+				{
+					type: 'fill-blank',
+					questionText: 'The writing system developed by the Sumerians in ancient Mesopotamia is called _______.',
+					options: null,
+					correctAnswer: 'cuneiform',
+					explanation: 'The passage states: "Cuneiform, developed by the Sumerians in ancient Mesopotamia (modern-day Iraq), is generally considered the first writing system."',
+					points: 1,
+					orderIndex: 4
+				},
+				{
+					type: 'matching',
+					questionText: 'Match each writing system with its correct description:',
+					options: JSON.stringify({
+						items: [
+							'Cuneiform',
+							'Hieroglyphics',
+							'Phoenician alphabet',
+							'Unicode'
+						],
+						descriptions: [
+							'A system of wedge-shaped marks pressed into clay tablets',
+							'A system that combined logographic, syllabic, and alphabetic elements',
+							'A revolutionary system with just 22 consonant letters',
+							'A computing standard that assigns a unique number to every character'
+						]
+					}),
+					correctAnswer: JSON.stringify({
+						'Cuneiform': 'A system of wedge-shaped marks pressed into clay tablets',
+						'Hieroglyphics': 'A system that combined logographic, syllabic, and alphabetic elements',
+						'Phoenician alphabet': 'A revolutionary system with just 22 consonant letters',
+						'Unicode': 'A computing standard that assigns a unique number to every character'
+					}),
+					explanation: 'These matches are based on descriptions from the passage.',
+					points: 4,
+					orderIndex: 5
+				}
+			]
+		},
+		{
+			title: 'Urban Agriculture: Growing Food in Cities',
+			content: `Urban agriculture, the practice of cultivating, processing, and distributing food in or around urban areas, has gained significant attention in recent years as a sustainable approach to food production. From rooftop gardens to community plots, urban farming takes many forms and offers numerous benefits to city dwellers and the environment.
+
+One of the primary advantages of urban agriculture is its contribution to food security. By producing food locally, cities can reduce their dependence on distant food sources, decrease transportation costs, and provide fresher produce to residents. Studies show that urban farms can be surprisingly productive—some estimates suggest that urban agriculture already supplies 15-20% of the world's food.
+
+Environmental benefits are also substantial. Urban green spaces help mitigate the urban heat island effect, improve air quality, and increase biodiversity. Gardens and farms can also assist with stormwater management by absorbing rainfall that would otherwise run off from impervious city surfaces, potentially reducing flooding.
+
+Community development represents another significant advantage. Urban agriculture projects often strengthen neighborhood bonds, provide educational opportunities, and create spaces for recreation and social interaction. In economically disadvantaged areas, community gardens can transform vacant lots into productive landscapes that generate both food and pride.
+
+Despite these benefits, urban agriculture faces several challenges. Land availability and cost are significant barriers in dense urban environments. Soil contamination, common in former industrial areas, can also pose health risks if not properly addressed. Additionally, zoning regulations, water access, and securing long-term land tenure present complications for many urban farming projects.
+
+Innovative solutions continue to emerge to address these challenges. Vertical farming, which utilizes stacked growing systems to maximize space efficiency, has expanded the possibilities for food production in space-limited environments. Hydroponic and aquaponic systems that grow plants without soil can help overcome contamination issues while conserving water.
+
+As cities continue to grow and global food systems face increasing pressure from climate change, urban agriculture offers a promising complement to traditional rural farming. While it won't replace conventional agriculture entirely, the integration of food production into urban planning represents an important step toward more resilient, sustainable cities.`,
+			difficulty: 'easy',
+			topic: 'Agriculture',
+			wordCount: 320,
+			source: 'Scientific Magazine',
+			questions: [
+				{
+					type: 'multiple-choice',
+					questionText: 'According to the passage, approximately what percentage of the world's food is supplied by urban agriculture?',
+					options: JSON.stringify([
+						'5-10%',
+						'15-20%',
+						'25-30%',
+						'35-40%'
+					]),
+					correctAnswer: '15-20%',
+					explanation: 'The passage states: "Studies show that urban farms can be surprisingly productive—some estimates suggest that urban agriculture already supplies 15-20% of the world's food."',
+					points: 1,
+					orderIndex: 1
+				},
+				{
+					type: 'true-false-ng',
+					questionText: 'Urban agriculture can help reduce flooding in cities.',
+					options: null,
+					correctAnswer: 'TRUE',
+					explanation: 'The passage states: "Gardens and farms can also assist with stormwater management by absorbing rainfall that would otherwise run off from impervious city surfaces, potentially reducing flooding."',
+					points: 1,
+					orderIndex: 2
+				},
+				{
+					type: 'true-false-ng',
+					questionText: 'The passage suggests that urban agriculture will eventually replace conventional rural farming.',
+					options: null,
+					correctAnswer: 'FALSE',
+					explanation: 'The passage explicitly states: "While it won't replace conventional agriculture entirely, the integration of food production into urban planning represents an important step toward more resilient, sustainable cities."',
+					points: 1,
+					orderIndex: 3
+				},
+				{
+					type: 'multiple-choice',
+					questionText: 'Which of the following is NOT mentioned as a challenge facing urban agriculture?',
+					options: JSON.stringify([
+						'Land availability',
+						'Soil contamination',
+						'Pest management',
+						'Zoning regulations'
+					]),
+					correctAnswer: 'Pest management',
+					explanation: 'The passage mentions land availability, soil contamination, and zoning regulations as challenges, but does not mention pest management.',
+					points: 1,
+					orderIndex: 4
+				},
+				{
+					type: 'matching',
+					questionText: 'Match each urban farming approach with its correct description:',
+					options: JSON.stringify({
+						items: [
+							'Vertical farming',
+							'Hydroponic systems',
+							'Community gardens',
+							'Rooftop gardens'
+						],
+						descriptions: [
+							'Utilizes stacked growing systems to maximize space efficiency',
+							'Grows plants without soil to overcome contamination issues',
+							'Transform vacant lots into productive landscapes',
+							'One form of urban agriculture mentioned in the introduction'
+						]
+					}),
+					correctAnswer: JSON.stringify({
+						'Vertical farming': 'Utilizes stacked growing systems to maximize space efficiency',
+						'Hydroponic systems': 'Grows plants without soil to overcome contamination issues',
+						'Community gardens': 'Transform vacant lots into productive landscapes',
+						'Rooftop gardens': 'One form of urban agriculture mentioned in the introduction'
+					}),
+					explanation: 'These matches are based on descriptions from the passage.',
+					points: 4,
+					orderIndex: 5
+				}
+			]
+		}
+	]
+
+	for (const passageData of passages) {
+		const { questions, ...passage } = passageData
+		
+		// 创建文章
+		const createdPassage = await prisma.ieltsPassage.create({
+			data: passage
+		})
+		
+		// 为每个文章创建问题
+		for (const question of questions) {
+			await prisma.ieltsQuestion.create({
+				data: {
+					...question,
+					passageId: createdPassage.id
+				}
+			})
+		}
+	}
+
+	console.log(`✅ Created ${passages.length} IELTS passages with questions`)
+}
+
 async function seed() {
 	console.log('🌱 Seeding...')
 	console.time(`🌱 Database has been seeded`)
@@ -243,6 +520,9 @@ async function seed() {
 	}
 
 	console.timeEnd(`🐨 Created admin user "kody"`)
+	
+	// 添加雅思阅读种子数据
+	await seedIeltsData()
 
 	console.timeEnd(`🌱 Database has been seeded`)
 }

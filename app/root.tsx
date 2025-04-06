@@ -206,7 +206,12 @@ function App() {
 						<div className="ml-auto hidden max-w-sm flex-1 sm:block">
 							{searchBar}
 						</div>
-						<div className="flex items-center gap-10">
+						<div className="flex items-center gap-4">
+							{user && (
+								<Button asChild variant="outline">
+									<Link to="/ielts/dashboard">雅思阅读</Link>
+								</Button>
+							)}
 							{user ? (
 								<UserDropdown />
 							) : (
@@ -224,7 +229,7 @@ function App() {
 				</div>
 
 				<div className="container flex justify-between pb-5">
-					<Logo />
+					<div></div>
 					<ThemeSwitch userPreference={data.requestInfo.userPrefs.theme} />
 				</div>
 			</div>
@@ -236,13 +241,8 @@ function App() {
 
 function Logo() {
 	return (
-		<Link to="/" className="group grid leading-snug">
-			<span className="font-light transition group-hover:-translate-x-1">
-				epic
-			</span>
-			<span className="font-bold transition group-hover:translate-x-1">
-				notes
-			</span>
+		<Link to="/" className="group">
+			{/* 已移除epic notes文字 */}
 		</Link>
 	)
 }

@@ -1,7 +1,6 @@
 import crypto from 'node:crypto'
 import { type Connection, type Password, type User } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { redirect } from 'react-router'
 import { Authenticator } from 'remix-auth'
 import { safeRedirect } from 'remix-utils/safe-redirect'
 import { providers } from './connections.server.ts'
@@ -10,6 +9,7 @@ import { combineHeaders, downloadFile } from './misc.tsx'
 import { type ProviderUser } from './providers/provider.ts'
 import { authSessionStorage } from './session.server.ts'
 import { uploadProfileImage } from './storage.server.ts'
+import { redirect } from './router-helpers'
 
 export const SESSION_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 30
 export const getSessionExpirationDate = () =>
