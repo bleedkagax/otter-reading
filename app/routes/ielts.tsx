@@ -17,6 +17,7 @@ export default function IeltsLayout() {
           <h1 className="text-2xl font-bold">雅思阅读训练</h1>
           <nav className="flex items-center gap-4">
             <a href="/ielts/passages" className="hover:underline">文章库</a>
+            <a href="/ielts/import" className="hover:underline">导入PDF</a>
             <a href="/ielts/vocabulary" className="hover:underline">词汇管理</a>
             <a href="/ielts/stats" className="hover:underline">学习统计</a>
           </nav>

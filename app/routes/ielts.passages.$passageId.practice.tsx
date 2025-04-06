@@ -80,20 +80,63 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const userId = await getUserId(request)
   const { passageId } = params
   
+  console.log("Debug - requested passageId:", passageId);
+  
   if (!passageId) {
     return redirect('/ielts/passages')
   }
   
+  // 处理可能的ID映射问题
+  let queryId = passageId;
+  // 检查是否是特殊格式ID（例如article1, article2等）
+  if(passageId.startsWith('article')) {
+    const articleNumber = passageId.replace('article', '');
+    // 这里应该添加具体的ID映射逻辑，或者查询数据库获取正确的ID
+    console.log("Special ID format detected:", passageId);
+    
+    // 临时解决方案：尝试通过标题查找文章
+    try {
+      const possiblePassage = await prisma.ieltsPassage.findFirst({
+        where: {
+          OR: [
+            // 尝试通过标题中包含数字来匹配
+            { title: { contains: `${articleNumber}` } },
+            // 如果上面不行，也可以尝试通过其他字段匹配
+            { id: passageId } // 如果ID恰好匹配
+          ]
+        }
+      });
+      
+      if(possiblePassage) {
+        console.log("Found passage by alternative query:", possiblePassage.id);
+        queryId = possiblePassage.id;
+      }
+    } catch(error) {
+      console.error("Error finding passage by alternative query:", error);
+    }
+  }
+  
   // 获取文章及问题
-  const passage = await prisma.ieltsPassage.findUnique({
-    where: { id: passageId },
+  let passage = await prisma.ieltsPassage.findUnique({
+    where: { id: queryId },
     include: {
       questions: true,
     },
   })
   
+  // 如果找不到，尝试获取所有文章作为备用方案
   if (!passage) {
-    throw new Response('文章不存在', { status: 404 })
+    console.log("Passage not found with ID:", queryId);
+    
+    // 尝试列出所有文章，以便调试
+    const allPassages = await prisma.ieltsPassage.findMany({
+      take: 5, // 限制只返回5条记录，避免数据过多
+      select: { id: true, title: true }
+    });
+    
+    console.log("Available passages:", allPassages);
+    
+    throw new Response(`文章不存在 (ID: ${passageId})`, { status: 404 })
   }
   
   // 查找是否有进行中的练习(仅对已登录用户)
@@ -102,7 +145,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     existingAttempt = await prisma.ieltsAttempt.findFirst({
       where: {
         userId,
-        passageId,
+        passageId: passage.id,
         completedAt: null,
       },
       include: {
@@ -137,6 +180,41 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const formData = await request.formData()
   const intent = formData.get('intent')
   
+  // 尝试获取正确的passage
+  let passage = null;
+  try {
+    passage = await prisma.ieltsPassage.findUnique({
+      where: { id: passageId },
+    });
+    
+    // 如果未找到，尝试特殊ID查询
+    if (!passage && passageId.startsWith('article')) {
+      const articleNumber = passageId.replace('article', '');
+      const possiblePassage = await prisma.ieltsPassage.findFirst({
+        where: {
+          OR: [
+            { title: { contains: `${articleNumber}` } },
+            { id: passageId }
+          ]
+        }
+      });
+      
+      if (possiblePassage) {
+        passage = possiblePassage;
+      }
+    }
+  } catch (error) {
+    console.error("查找文章时出错:", error);
+  }
+  
+  // 如果仍未找到文章，返回错误
+  if (!passage) {
+    return json({ error: '找不到对应的文章' }, { status: 404 });
+  }
+  
+  // 使用找到的passage.id代替URL中的passageId
+  const actualPassageId = passage.id;
+  
   // 处理不同的操作
   switch (intent) {
     case 'start-attempt': {
@@ -144,7 +222,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const attempt = await prisma.ieltsAttempt.create({
         data: {
           userId,
-          passageId,
+          passageId: actualPassageId,
           startedAt: new Date(),
         },
       })
@@ -274,7 +352,11 @@ export default function PracticePage() {
   const navigate = useNavigate()
   const submit = useSubmit()
   
-  const [attempt, setAttempt] = useState<IeltsAttempt | null>(existingAttempt)
+  // 使用已有尝试或从action获取的尝试
+  const [attempt, setAttempt] = useState<IeltsAttempt | null>(
+    existingAttempt || (actionData?.attempt as IeltsAttempt) || null
+  )
+  
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>(
     existingAttempt?.responses.reduce((acc: Record<string, string>, response: IeltsResponse) => {
@@ -291,8 +373,56 @@ export default function PracticePage() {
   const [highlightPosition, setHighlightPosition] = useState({ x: 0, y: 0 })
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   
+  // 如果没有找到文章，显示错误信息和返回链接
+  if (!passage) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold mb-6 text-red-600">找不到文章</h1>
+        <p className="mb-4">无法找到ID为 "{params.passageId}" 的文章。可能是文章已被删除或ID不正确。</p>
+        
+        <div className="flex space-x-4 mt-6">
+          <button
+            onClick={() => navigate('/ielts/passages')}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            返回文章列表
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   // 获取当前问题
   const currentQuestion = passage.questions[currentQuestionIndex] || passage.questions[0]
+  
+  // 如果用户已登录但没有尝试记录，创建一个新的尝试
+  const createAttempt = () => {
+    if (isLoggedIn && !attempt && passage) {
+      console.log('手动创建练习尝试...');
+      const form = new FormData();
+      form.append('intent', 'start-attempt');
+      
+      submit(form, {
+        method: 'post',
+        action: `/ielts/passages/${params.passageId}/practice`,
+      });
+    }
+  }
+  
+  // 监听action数据更新
+  useEffect(() => {
+    if (actionData?.success && actionData.attempt && !attempt) {
+      console.log('设置新创建的尝试:', actionData.attempt);
+      setAttempt(actionData.attempt);
+    }
+  }, [actionData, attempt]);
+  
+  // 页面加载后，如果没有尝试记录，自动创建一个
+  useEffect(() => {
+    if (isLoggedIn && !attempt && passage) {
+      createAttempt();
+    }
+  }, []);
   
   // 计时器
   useEffect(() => {
@@ -463,184 +593,206 @@ export default function PracticePage() {
   // 主界面
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* 时间提示 */}
-        <div className="fixed top-4 right-4 bg-white shadow-md rounded-lg px-4 py-2 z-50">
-          <span className="font-medium">用时: </span>
-          <span className="text-gray-800 font-mono">
-            {formatTime(timer.minutes, timer.seconds)}
-          </span>
+      {/* 如果未登录或没有尝试记录，显示创建尝试按钮 */}
+      {isLoggedIn && !attempt ? (
+        <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md text-center">
+          <h2 className="text-xl font-bold mb-4">准备好开始练习了吗？</h2>
+          <p className="mb-6 text-gray-600">点击下方按钮开始"{passage.title}"的练习</p>
+          <button
+            onClick={createAttempt}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+          >
+            开始练习
+          </button>
         </div>
-
-        {/* 阅读考试指导 */}
-        <div className="bg-gray-100 border border-gray-200 p-4 mb-6 rounded-md">
-          <h2 className="font-bold text-lg">Part 1</h2>
-          <p className="text-gray-700">You should spend about 20 minutes on Questions 1-{passage.questions.length}, which are based on Reading Passage 1.</p>
-        </div>
-
-        {/* 主内容区 - 左右两栏布局 */}
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
-          {/* 左侧阅读文章 - 添加固定高度和滚动 */}
-          <div className="lg:w-1/2 h-full overflow-hidden flex flex-col">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">{passage.title}</h1>
-            <div className="overflow-y-auto pr-4 flex-grow">
-              <PassageReader 
-                content={passage.content} 
-                showParagraphNumbers={true}
-              />
-            </div>
-            
-            {/* 文本高亮工具提示 */}
-            {showHighlightTooltip && (
-              <div 
-                className="fixed bg-white shadow-lg rounded-lg p-2 z-50 flex gap-2"
-                style={{
-                  left: `${highlightPosition.x}px`,
-                  top: `${highlightPosition.y}px`,
-                  transform: 'translateX(-50%)'
-                }}
-              >
-                <button 
-                  className="text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded"
-                  onClick={handleHighlight}
-                >
-                  高亮标记
-                </button>
-                <button 
-                  className="text-xs bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded"
-                  onClick={handleAddToVocabulary}
-                >
-                  添加到生词本
-                </button>
-              </div>
-            )}
+      ) : (
+        <div className="max-w-7xl mx-auto">
+          {/* 时间提示 */}
+          <div className="fixed top-4 right-4 bg-white shadow-md rounded-lg px-4 py-2 z-50">
+            <span className="font-medium">用时: </span>
+            <span className="text-gray-800 font-mono">
+              {formatTime(timer.minutes, timer.seconds)}
+            </span>
           </div>
 
-          {/* 右侧问题区域 - 添加固定高度和滚动 */}
-          <div className="lg:w-1/2 bg-white p-6 rounded-lg shadow-md h-full flex flex-col overflow-hidden">
-            {/* 问题导航 */}
-            <div className="mb-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold">问题 {currentQuestionIndex + 1}/{passage.questions.length}</h2>
-              
-              <div className="flex gap-1">
-                {passage.questions.map((q, index) => (
-                  <button
-                    key={q.id}
-                    onClick={() => setCurrentQuestionIndex(index)}
-                    className={`size-8 rounded-full flex items-center justify-center ${
-                      currentQuestionIndex === index 
-                        ? 'bg-blue-600 text-white'
-                        : userAnswers[q.id]
-                        ? 'bg-green-100 text-green-800 border border-green-500'
-                        : 'bg-gray-100'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
+          {/* 阅读考试指导 */}
+          <div className="bg-gray-100 border border-gray-200 p-4 mb-6 rounded-md">
+            <h2 className="font-bold text-lg">Part 1</h2>
+            <p className="text-gray-700">You should spend about 20 minutes on Questions 1-{passage.questions.length}, which are based on Reading Passage 1.</p>
+          </div>
+
+          {/* 主内容区 - 左右两栏布局 */}
+          <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
+            {/* 左侧阅读文章 - 添加固定高度和滚动 */}
+            <div className="lg:w-1/2 h-full overflow-hidden flex flex-col">
+              <h1 className="text-2xl font-bold text-gray-800 mb-4">{passage.title}</h1>
+              <div className="overflow-y-auto pr-4 flex-grow">
+                <PassageReader 
+                  content={passage.content} 
+                  showParagraphNumbers={true}
+                />
               </div>
-            </div>
-            
-            <div className="mb-4">
-              <p className="mb-2">完成下面的笔记。</p>
-              <p className="mb-4 font-bold">
-                从文章中选择 <span className="underline">每空一个单词</span> 填入。
-              </p>
+              
+              {/* 文本高亮工具提示 */}
+              {showHighlightTooltip && (
+                <div 
+                  className="fixed bg-white shadow-lg rounded-lg p-2 z-50 flex gap-2"
+                  style={{
+                    left: `${highlightPosition.x}px`,
+                    top: `${highlightPosition.y}px`,
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <button 
+                    className="text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded"
+                    onClick={handleHighlight}
+                  >
+                    高亮标记
+                  </button>
+                  <button 
+                    className="text-xs bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded"
+                    onClick={handleAddToVocabulary}
+                  >
+                    添加到生词本
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="overflow-y-auto pr-4 flex-grow">
-              <div className="mb-8">
-                <h3 className="text-lg font-bold mb-4">{passage.title}</h3>
+            {/* 右侧问题区域 */}
+            <div className="lg:w-1/2 bg-white p-6 rounded-lg shadow-md h-full flex flex-col overflow-hidden">
+              {/* 问题导航 */}
+              <div className="mb-4 flex justify-between items-center">
+                <h2 className="text-xl font-bold">问题 {currentQuestionIndex + 1}/{passage.questions.length}</h2>
                 
-                <h4 className="font-bold mb-2">填空题</h4>
-                <ul className="space-y-4">
-                  {passage.questions.map((question, index) => (
-                    <li key={question.id} className="flex items-start gap-2">
-                      <span className="text-gray-500">•</span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span>{question.questionText}</span>
-                          <button 
-                            className={`ml-2 ${bookmarkedQuestions.has(question.id) ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500`}
-                            onClick={() => toggleBookmark(question.id)}
-                            title={bookmarkedQuestions.has(question.id) ? "移除书签" : "添加书签"}
-                          >
-                            ★
-                          </button>
-                        </div>
-                        
-                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          <input
-                            ref={el => setInputRef(question.id, el)}
-                            type="text"
-                            className="border border-gray-300 rounded-md px-2 py-1 w-32 text-center"
-                            value={userAnswers[question.id] || ''}
-                            onChange={(e) => handleAnswer(e.target.value)}
-                            maxLength={15}
-                          />
-                        </div>
-                        
-                        {/* 显示正确答案的反馈 */}
-                        {actionData?.correctAnswer && userAnswers[question.id] && (
-                          <div className="mt-2 text-sm text-red-600">
-                            正确答案: {actionData.correctAnswer}
-                          </div>
-                        )}
-                      </div>
-                    </li>
+                <div className="flex gap-1">
+                  {passage.questions.map((q, index) => (
+                    <button
+                      key={q.id}
+                      onClick={() => setCurrentQuestionIndex(index)}
+                      className={`size-8 rounded-full flex items-center justify-center ${
+                        currentQuestionIndex === index 
+                          ? 'bg-blue-600 text-white'
+                          : userAnswers[q.id]
+                          ? 'bg-green-100 text-green-800 border border-green-500'
+                          : 'bg-gray-100'
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
                   ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* 底部导航按钮 - 固定在底部 */}
-            <div className="mt-4 pt-4 border-t flex justify-between">
-              <div>
-                <button 
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 mr-2"
-                  disabled={currentQuestionIndex === 0}
-                  onClick={goToPrevQuestion}
-                >
-                  上一题
-                </button>
-                
-                {currentQuestionIndex < passage.questions.length - 1 ? (
-                  <button 
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
-                    onClick={goToNextQuestion}
-                  >
-                    下一题
-                  </button>
-                ) : (
-                  <button 
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={handleComplete}
-                  >
-                    提交答案
-                  </button>
-                )}
+                </div>
               </div>
               
-              {/* 导航指示器 */}
-              <div className="flex justify-end gap-1">
-                {passage.questions.map((question, index) => (
-                  <button
-                    key={question.id}
-                    className={`size-6 rounded-full flex items-center justify-center border ${
-                      currentQuestionIndex === index ? 'bg-blue-600 text-white' : 
-                      bookmarkedQuestions.has(question.id) ? 'bg-yellow-100 border-yellow-500' :
-                      userAnswers[question.id] ? 'bg-gray-200' : 'bg-white'
-                    }`}
-                    onClick={() => setCurrentQuestionIndex(index)}
+              <div className="mb-4">
+                <p className="mb-2">完成下面的笔记。</p>
+                <p className="mb-4 font-bold">
+                  从文章中选择 <span className="underline">每空一个单词</span> 填入。
+                </p>
+              </div>
+
+              <div className="overflow-y-auto pr-4 flex-grow">
+                <div className="mb-8">
+                  <h3 className="text-lg font-bold mb-4">{passage.title}</h3>
+                  
+                  {/* 调试信息 */}
+                  <div className="mb-4 p-2 bg-gray-100 rounded">
+                    <p className="text-xs">调试信息: 当前问题索引: {currentQuestionIndex}</p>
+                    <p className="text-xs">问题总数: {passage.questions.length}</p>
+                    <p className="text-xs">当前问题ID: {currentQuestion?.id || '无'}</p>
+                  </div>
+                  
+                  <h4 className="font-bold mb-2">填空题</h4>
+                  <ul className="space-y-4">
+                    {/* 仅显示当前问题 */}
+                    {currentQuestion && (
+                      <li key={currentQuestion.id} className="flex items-start gap-2">
+                        <span className="text-gray-500">•</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span>{currentQuestion.questionText}</span>
+                            <button 
+                              className={`ml-2 ${bookmarkedQuestions.has(currentQuestion.id) ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500`}
+                              onClick={() => toggleBookmark(currentQuestion.id)}
+                              title={bookmarkedQuestions.has(currentQuestion.id) ? "移除书签" : "添加书签"}
+                            >
+                              ★
+                            </button>
+                          </div>
+                          
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <input
+                              ref={el => setInputRef(currentQuestion.id, el)}
+                              type="text"
+                              className="border border-gray-300 rounded-md px-2 py-1 w-32 text-center"
+                              value={userAnswers[currentQuestion.id] || ''}
+                              onChange={(e) => handleAnswer(e.target.value)}
+                              maxLength={15}
+                            />
+                          </div>
+                          
+                          {/* 显示正确答案的反馈 */}
+                          {actionData?.correctAnswer && userAnswers[currentQuestion.id] && (
+                            <div className="mt-2 text-sm text-red-600">
+                              正确答案: {actionData.correctAnswer}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+              {/* 底部导航按钮 - 固定在底部 */}
+              <div className="mt-4 pt-4 border-t flex justify-between">
+                <div>
+                  <button 
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 mr-2"
+                    disabled={currentQuestionIndex === 0}
+                    onClick={goToPrevQuestion}
                   >
-                    {index + 1}
+                    上一题
                   </button>
-                ))}
+                  
+                  {currentQuestionIndex < passage.questions.length - 1 ? (
+                    <button 
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
+                      onClick={goToNextQuestion}
+                    >
+                      下一题
+                    </button>
+                  ) : (
+                    <button 
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                      onClick={handleComplete}
+                    >
+                      提交答案
+                    </button>
+                  )}
+                </div>
+                
+                {/* 导航指示器 */}
+                <div className="flex justify-end gap-1">
+                  {passage.questions.map((question, index) => (
+                    <button
+                      key={question.id}
+                      className={`size-6 rounded-full flex items-center justify-center border ${
+                        currentQuestionIndex === index ? 'bg-blue-600 text-white' : 
+                        bookmarkedQuestions.has(question.id) ? 'bg-yellow-100 border-yellow-500' :
+                        userAnswers[question.id] ? 'bg-gray-200' : 'bg-white'
+                      }`}
+                      onClick={() => setCurrentQuestionIndex(index)}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 } 
