@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useSubmit } from 'react-router'
 import { formatTime, IeltsQuestion, IeltsAttempt } from '../types'
 
@@ -36,9 +36,15 @@ export function useQuestionAttempt({
   isTestMode = false,
   onComplete
 }: QuestionAttemptOptions) {
+  // 初始化状态
+  const initialAnswers: Record<string, string> = {}
+  attempt.responses.forEach(response => {
+    initialAnswers[response.questionId] = response.userAnswer
+  })
+
   const [state, setState] = useState<QuestionAttemptState>({
     currentQuestionIdx: 0,
-    answers: {},
+    answers: initialAnswers,
     timeSpent: 0,
     isSubmitted: false,
     results: null,
@@ -48,40 +54,33 @@ export function useQuestionAttempt({
   
   const submit = useSubmit()
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const timerStartedRef = useRef<Date>(new Date())
+  const questionStartTimeRef = useRef<Date>(new Date())
   
-  const currentQuestion = questions[state.currentQuestionIdx]
-  
-  // 初始化已有的回答
-  useEffect(() => {
-    const savedAnswers: Record<string, string> = {}
-    attempt.responses.forEach(response => {
-      savedAnswers[response.questionId] = response.userAnswer
-    })
-    
-    setState(prev => ({
-      ...prev,
-      answers: savedAnswers
-    }))
-    
-    // 启动计时器
-    timerRef.current = setInterval(() => {
-      setState(prev => ({
-        ...prev,
-        timeSpent: prev.timeSpent + 1
-      }))
-    }, 1000)
-    
-    // 记录开始时间
-    timerStartedRef.current = new Date()
-    
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+  // 启动计时器
+  const startTimer = useCallback(() => {
+    if (!timerRef.current) {
+      timerRef.current = setInterval(() => {
+        setState(prev => ({
+          ...prev,
+          timeSpent: prev.timeSpent + 1
+        }))
+      }, 1000)
     }
-  }, [attempt.responses])
+  }, [])
+  
+  // 停止计时器
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
   
   // 处理答案变更
-  const handleAnswerChange = (questionId: string, value: string) => {
+  const handleAnswerChange = useCallback((questionId: string, value: string) => {
+    // 确保计时器在第一次回答时启动
+    startTimer()
+    
     setState(prev => ({
       ...prev,
       answers: {
@@ -92,7 +91,7 @@ export function useQuestionAttempt({
     
     // 计算此问题的耗时
     const now = new Date()
-    const timeTaken = Math.floor((now.getTime() - timerStartedRef.current.getTime()) / 1000)
+    const timeTaken = Math.floor((now.getTime() - questionStartTimeRef.current.getTime()) / 1000)
     
     // 自动保存
     const formData = new FormData()
@@ -104,13 +103,14 @@ export function useQuestionAttempt({
     
     submit(formData, { method: 'post' })
     
-    // 更新计时开始时间
-    timerStartedRef.current = now
-  }
+    // 更新问题开始时间
+    questionStartTimeRef.current = now
+  }, [attempt.id, submit, startTimer])
   
   // 导航到下一题
-  const goToNextQuestion = () => {
+  const goToNextQuestion = useCallback(() => {
     if (state.currentQuestionIdx < questions.length - 1) {
+      questionStartTimeRef.current = new Date()
       setState(prev => ({
         ...prev,
         currentQuestionIdx: prev.currentQuestionIdx + 1,
@@ -118,11 +118,12 @@ export function useQuestionAttempt({
         responseStatus: null
       }))
     }
-  }
+  }, [state.currentQuestionIdx, questions.length])
   
   // 导航到上一题
-  const goToPreviousQuestion = () => {
+  const goToPreviousQuestion = useCallback(() => {
     if (state.currentQuestionIdx > 0) {
+      questionStartTimeRef.current = new Date()
       setState(prev => ({
         ...prev,
         currentQuestionIdx: prev.currentQuestionIdx - 1,
@@ -130,11 +131,12 @@ export function useQuestionAttempt({
         responseStatus: null
       }))
     }
-  }
+  }, [state.currentQuestionIdx])
   
   // 导航到特定题目
-  const goToQuestion = (idx: number) => {
+  const goToQuestion = useCallback((idx: number) => {
     if (idx >= 0 && idx < questions.length) {
+      questionStartTimeRef.current = new Date()
       setState(prev => ({
         ...prev,
         currentQuestionIdx: idx,
@@ -142,11 +144,10 @@ export function useQuestionAttempt({
         responseStatus: null
       }))
     }
-  }
+  }, [questions.length])
   
   // 提交尝试
-  const handleSubmit = () => {
-    // 检查是否已回答所有问题
+  const handleSubmit = useCallback(() => {
     const unansweredQuestions = questions.filter(q => !state.answers[q.id])
     
     if (unansweredQuestions.length > 0) {
@@ -160,24 +161,28 @@ export function useQuestionAttempt({
       isSubmitted: true
     }))
     
+    stopTimer()
+    
     const formData = new FormData()
     formData.append('intent', 'completeAttempt')
     formData.append('attemptId', attempt.id)
     formData.append('timeSpent', state.timeSpent.toString())
     
     submit(formData, { method: 'post' })
-  }
+  }, [attempt.id, questions, state.answers, state.timeSpent, submit, stopTimer])
   
-  // 切换解释显示
-  const toggleExplanation = () => {
-    setState(prev => ({
-      ...prev,
-      showExplanation: !prev.showExplanation
-    }))
-  }
+  // 切换解释显示 - 只在非测试模式下可用
+  const toggleExplanation = useCallback(() => {
+    if (!isTestMode) {
+      setState(prev => ({
+        ...prev,
+        showExplanation: !prev.showExplanation
+      }))
+    }
+  }, [isTestMode])
   
   // 设置答题结果
-  const setResults = (results: {
+  const setResults = useCallback((results: {
     score: number
     correctCount: number
     totalQuestions: number
@@ -187,25 +192,27 @@ export function useQuestionAttempt({
       results
     }))
     
-    // 停止计时
-    if (timerRef.current) clearInterval(timerRef.current)
+    stopTimer()
     
-    // 调用完成回调
     if (onComplete) {
       onComplete(results)
     }
-  }
+  }, [onComplete, stopTimer])
   
-  // 设置回答状态
-  const setResponseStatus = (status: {
+  // 设置回答状态 - 在测试模式下不显示正确/错误
+  const setResponseStatus = useCallback((status: {
     questionId: string
     isCorrect: boolean
   } | null) => {
-    setState(prev => ({
-      ...prev,
-      responseStatus: status
-    }))
-  }
+    if (!isTestMode) {
+      setState(prev => ({
+        ...prev,
+        responseStatus: status
+      }))
+    }
+  }, [isTestMode])
+  
+  const currentQuestion = questions[state.currentQuestionIdx]
   
   return {
     currentQuestion,
@@ -215,8 +222,8 @@ export function useQuestionAttempt({
     formattedTime: formatTime(state.timeSpent),
     isSubmitted: state.isSubmitted,
     results: state.results,
-    showExplanation: state.showExplanation,
-    responseStatus: state.responseStatus,
+    showExplanation: !isTestMode && state.showExplanation,
+    responseStatus: !isTestMode ? state.responseStatus : null,
     handleAnswerChange,
     goToNextQuestion,
     goToPreviousQuestion,
@@ -224,6 +231,8 @@ export function useQuestionAttempt({
     handleSubmit,
     toggleExplanation,
     setResults,
-    setResponseStatus
+    setResponseStatus,
+    startTimer,
+    stopTimer
   }
 } 

@@ -128,31 +128,36 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
     })
     
-    if (existingResponse) {
-      // 更新现有回答
-      await prisma.ieltsResponse.update({
-        where: { id: existingResponse.id },
-        data: {
-          userAnswer: answer,
-          isCorrect,
-          timeTaken
-        }
-      })
-    } else {
-      // 创建新回答
-      await prisma.ieltsResponse.create({
-        data: {
-          attemptId,
-          questionId,
-          userAnswer: answer,
-          isCorrect,
-          timeTaken
-        }
-      })
+    try {
+      if (existingResponse) {
+        // 更新现有回答
+        await prisma.ieltsResponse.update({
+          where: { id: existingResponse.id },
+          data: {
+            userAnswer: answer,
+            isCorrect,
+            timeTaken
+          }
+        })
+      } else {
+        // 创建新回答
+        await prisma.ieltsResponse.create({
+          data: {
+            attemptId,
+            questionId,
+            userAnswer: answer,
+            isCorrect,
+            timeTaken
+          }
+        })
+      }
+      
+      // 在测试模式下不返回是否正确的信息，仅确认保存
+      return json({ success: true })
+    } catch (error) {
+      console.error('Error saving response:', error)
+      return json({ error: 'Failed to save response' }, { status: 500 })
     }
-    
-    // 在测试模式下不返回是否正确的信息，仅确认保存
-    return json({ success: true })
   }
   
   if (intent === 'completeAttempt') {
@@ -173,34 +178,39 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return json({ error: 'Attempt not found' }, { status: 404 })
     }
     
-    // 计算分数
-    let correctCount = 0
-    attempt.responses.forEach(response => {
-      if (response.isCorrect) correctCount++
-    })
-    
-    const totalQuestions = attempt.passage?.questions.length || 0
-    const totalScore = totalQuestions > 0 
-      ? Math.round((correctCount / totalQuestions) * 100) 
-      : 0
-    
-    // 更新尝试
-    await prisma.ieltsAttempt.update({
-      where: { id: attemptId },
-      data: {
-        completedAt: new Date(),
-        totalScore,
-        maxScore: totalQuestions * 1, // 假设每题1分
-        timeSpent: parseInt(formData.get('timeSpent') as string) || null
-      }
-    })
-    
-    return json({ 
-      success: true, 
-      score: totalScore,
-      correctCount,
-      totalQuestions
-    })
+    try {
+      // 计算分数
+      let correctCount = 0
+      attempt.responses.forEach(response => {
+        if (response.isCorrect) correctCount++
+      })
+      
+      const totalQuestions = attempt.passage?.questions.length || 0
+      const totalScore = totalQuestions > 0 
+        ? Math.round((correctCount / totalQuestions) * 100) 
+        : 0
+      
+      // 更新尝试
+      await prisma.ieltsAttempt.update({
+        where: { id: attemptId },
+        data: {
+          completedAt: new Date(),
+          totalScore,
+          maxScore: totalQuestions * 1, // 假设每题1分
+          timeSpent: parseInt(formData.get('timeSpent') as string) || null
+        }
+      })
+      
+      return json({ 
+        success: true, 
+        score: totalScore,
+        correctCount,
+        totalQuestions
+      })
+    } catch (error) {
+      console.error('Error completing attempt:', error)
+      return json({ error: 'Failed to complete attempt' }, { status: 500 })
+    }
   }
   
   return json({ error: 'Invalid intent' }, { status: 400 })
