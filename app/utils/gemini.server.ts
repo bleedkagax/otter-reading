@@ -1,117 +1,115 @@
-/**
- * Google Gemini API 集成服务
- * 用于处理PDF文本内容并转换为雅思题目格式
- */
+// 导入必要的依赖
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { env } from './env.server'
 
-// 解析PDF内容并转换为雅思题目
+// 定义问题类型
+interface IeltsQuestion {
+  type: string
+  questionText: string
+  options: string | null
+  correctAnswer: string
+  explanation: string
+}
+
+// 定义处理后的内容结构
+interface ProcessedContent {
+  content: string
+  questions: IeltsQuestion[]
+}
+
+/**
+ * 使用Google Gemini API处理PDF内容
+ * 提取并格式化文本内容，生成IELTS类型的问题
+ */
 export async function processPdfWithGemini(
   pdfContent: string,
   title: string,
   difficulty: string,
   topic: string
-) {
-  // 在实际环境中，这里应该调用Gemini API
-  // 以下是模拟实现
+): Promise<ProcessedContent> {
+  // 检查环境变量
+  const apiKey = env.GEMINI_API_KEY
   
-  // API密钥通常应该存储在环境变量中
-  // const apiKey = process.env.GEMINI_API_KEY;
-  
+  if (!apiKey) {
+    throw new Error('环境变量中未设置Gemini API密钥')
+  }
+
   try {
-    // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // 构建一个根据PDF内容生成的雅思文章和问题
-    // 在实际实现中，你需要发送请求到Gemini API，可能使用fetch或axios
-    
-    // 示例提示
+    // 初始化Gemini客户端
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+
+    // 准备提示词
     const prompt = `
-      请将以下PDF内容转换为雅思阅读测试格式。
-      标题: ${title}
-      难度: ${difficulty}
-      主题: ${topic}
+      我需要你帮我将以下内容处理成IELTS阅读理解测试，标题是: "${title}"，
+      难度级别: "${difficulty}"，主题是: "${topic}"。
       
-      PDF内容:
-      ${pdfContent.substring(0, 2000)}... [内容可能被截断]
+      请执行以下操作:
+      1. 清理文本，删除任何不必要的页码、页眉页脚等
+      2. 格式化文本为易于阅读的段落
+      3. 基于文本内容生成5个IELTS风格的问题，包括:
+         - 1-2个多选题
+         - 1-2个判断题(True/False/Not Given)
+         - 1-2个填空题
+      4. 每个问题提供详细解释和正确答案
       
-      请生成:
-      1. 一篇适合雅思阅读的文章（约400-500字）
-      2. 5个不同类型的雅思阅读题（包括选择题、判断题和填空题）
-      3. 每个题目需包含问题文本、正确答案和解释
-    `;
-    
-    console.log("提示词:", prompt);
-    
-    // 模拟响应
-    const simulatedContent = `
-      ${title}
-      
-      ${pdfContent.substring(0, 200)}...
-      
-      这是一篇关于${topic}的文章，通过Gemini AI生成。文章探讨了这个主题的多个方面，包括其历史背景、现状分析和未来展望。
-      
-      在历史部分，文章追溯了${topic}的起源与发展历程，展示了其如何从最初的概念逐渐演变成今天我们熟知的形式。这一过程中经历了多次变革与创新，每一次都为这个领域带来新的活力与可能性。
-      
-      现状分析部分详细描述了${topic}在当代社会中的应用与影响。不同国家和地区对此有着不同的理解与实践，形成了丰富多样的案例与经验。研究表明，在适当的条件下，这些应用可以带来显著的社会效益和经济价值。
-      
-      最后，文章展望了${topic}的未来发展趋势。随着技术的进步和社会的变革，这一领域将面临新的机遇与挑战。如何平衡发展与可持续性，将成为未来需要重点关注的问题。
-    `.trim();
-    
-    // 模拟生成的问题
-    const simulatedQuestions = [
+      以JSON格式输出，包含两个主要部分:
       {
-        type: "multiple-choice",
-        questionText: `根据文章，以下哪一项关于${topic}的说法是正确的？`,
-        options: JSON.stringify([
-          `${topic}的发展没有经历任何变革或创新`,
-          `${topic}在不同国家和地区有着不同的理解与实践`,
-          `${topic}未来的发展不会面临任何挑战`,
-          `${topic}在历史上一直保持相同的形式`
-        ]),
-        correctAnswer: `${topic}在不同国家和地区有着不同的理解与实践`,
-        explanation: "文章在现状分析部分明确提到'不同国家和地区对此有着不同的理解与实践'。"
-      },
-      {
-        type: "true-false-ng",
-        questionText: `文章认为${topic}的未来发展不需要考虑可持续性问题。`,
-        options: null,
-        correctAnswer: "FALSE",
-        explanation: "文章在展望部分明确提到'如何平衡发展与可持续性，将成为未来需要重点关注的问题'，表明可持续性是需要考虑的重要因素。"
-      },
-      {
-        type: "fill-blank",
-        questionText: `文章指出，${topic}在当代社会中的应用可以带来显著的______和经济价值。`,
-        options: null,
-        correctAnswer: "社会效益",
-        explanation: "文章在现状分析部分提到'这些应用可以带来显著的社会效益和经济价值'。"
-      },
-      {
-        type: "multiple-choice",
-        questionText: "文章主要分为哪几个部分？",
-        options: JSON.stringify([
-          "起源、发展、衰退",
-          "概念、方法、结果",
-          "历史背景、现状分析、未来展望",
-          "问题、原因、解决方案"
-        ]),
-        correctAnswer: "历史背景、现状分析、未来展望",
-        explanation: "文章清晰地分为三个主要部分：历史背景（起源与发展）、现状分析（当代应用与影响）以及未来展望（发展趋势）。"
-      },
-      {
-        type: "true-false-ng",
-        questionText: `文章表明${topic}的历史发展是一个线性过程，没有经历任何变革。`,
-        options: null,
-        correctAnswer: "FALSE",
-        explanation: "文章在历史部分提到'这一过程中经历了多次变革与创新'，表明其发展并非线性，而是经历了多次变革。"
+        "content": "格式化后的文章内容",
+        "questions": [
+          {
+            "type": "multiple_choice 或 true_false_ng 或 fill_blank",
+            "questionText": "问题文本",
+            "options": "用|分隔的选项（仅多选题需要）",
+            "correctAnswer": "正确答案",
+            "explanation": "答案解释"
+          },
+          // 更多问题...
+        ]
       }
-    ];
+      
+      这是要处理的PDF内容:
+      ${pdfContent.slice(0, 10000)} // 限制内容长度避免超出token限制
+    `
+
+    // 调用API处理内容
+    const result = await model.generateContent(prompt)
+    const responseText = result.response.text()
     
-    return {
-      content: simulatedContent,
-      questions: simulatedQuestions
-    };
-    
+    // 处理响应
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error('无法从响应中提取JSON')
+      }
+      
+      const jsonData = JSON.parse(jsonMatch[0])
+      
+      // 验证返回的数据格式
+      if (!jsonData.content || !Array.isArray(jsonData.questions)) {
+        throw new Error('返回的数据格式无效')
+      }
+      
+      return jsonData as ProcessedContent
+    } catch (err) {
+      console.error('解析Gemini响应时出错:', err)
+      
+      // 返回一个基本的处理内容
+      return {
+        content: pdfContent.slice(0, 5000), // 截取部分内容
+        questions: [
+          {
+            type: 'multiple_choice',
+            questionText: '无法生成问题，请手动添加问题。',
+            options: 'A|B|C|D',
+            correctAnswer: 'A',
+            explanation: '请提供正确解释。'
+          }
+        ]
+      }
+    }
   } catch (error) {
-    console.error("Gemini API处理失败:", error);
-    throw new Error(`Gemini处理失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('调用Gemini API时出错:', error)
+    throw new Error('处理PDF内容时出错')
   }
 } 
