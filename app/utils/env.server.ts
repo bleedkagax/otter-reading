@@ -26,6 +26,9 @@ const schema = z.object({
 	AWS_REGION: z.string(),
 	AWS_ENDPOINT_URL_S3: z.string().url(),
 	BUCKET_NAME: z.string(),
+	
+	// Gemini API Configuration
+	GEMINI_API_KEY: z.string().optional(),
 })
 
 declare global {

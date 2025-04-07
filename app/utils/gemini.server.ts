@@ -1,6 +1,5 @@
 // 导入必要的依赖
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { env } from './env.server'
 
 // 定义问题类型
 interface IeltsQuestion {
@@ -28,7 +27,7 @@ export async function processPdfWithGemini(
   topic: string
 ): Promise<ProcessedContent> {
   // 检查环境变量
-  const apiKey = env.GEMINI_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY
   
   if (!apiKey) {
     throw new Error('环境变量中未设置Gemini API密钥')
@@ -83,14 +82,21 @@ export async function processPdfWithGemini(
         throw new Error('无法从响应中提取JSON')
       }
       
-      const jsonData = JSON.parse(jsonMatch[0])
+      const parsedData = JSON.parse(jsonMatch[0]) as unknown
       
       // 验证返回的数据格式
-      if (!jsonData.content || !Array.isArray(jsonData.questions)) {
+      if (
+        typeof parsedData === 'object' && 
+        parsedData !== null && 
+        'content' in parsedData && 
+        typeof (parsedData as any).content === 'string' &&
+        'questions' in parsedData && 
+        Array.isArray((parsedData as any).questions)
+      ) {
+        return parsedData as ProcessedContent
+      } else {
         throw new Error('返回的数据格式无效')
       }
-      
-      return jsonData as ProcessedContent
     } catch (err) {
       console.error('解析Gemini响应时出错:', err)
       
