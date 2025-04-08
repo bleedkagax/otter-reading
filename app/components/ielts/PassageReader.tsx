@@ -41,10 +41,11 @@ interface PassageReaderProps {
   topic?: string
   testResults?: ReadingTestResult[]
   onSubmit?: (answers: Record<number, string>) => void
-  onWordSelect?: (word: string) => void
+  onWordSelect?: (word: string, context?: string) => void
   onHighlight?: (section: HighlightedSection) => void
   highlights?: HighlightedSection[]
   simpleMode?: boolean
+  disableNativeToolbar?: boolean
 }
 
 export function PassageReader({
@@ -60,7 +61,8 @@ export function PassageReader({
   onWordSelect,
   onHighlight,
   highlights = [],
-  simpleMode = false
+  simpleMode = false,
+  disableNativeToolbar = false
 }: PassageReaderProps) {
   const [currentQuestion, setCurrentQuestion] = useState(1)
   const [answers, setAnswers] = useState<Record<number, string>>({})
@@ -204,8 +206,21 @@ export function PassageReader({
     const selectedText = selection.toString().trim()
     setSelectedText(selectedText)
     
+    // Get surrounding context for the word (up to 50 characters before and after)
+    let context = '';
+    if (selection.anchorNode && selection.anchorNode.textContent) {
+      const nodeText = selection.anchorNode.textContent;
+      const selectionStart = selection.anchorOffset;
+      const selectionEnd = selection.focusOffset;
+      
+      const start = Math.max(0, Math.min(selectionStart, selectionEnd) - 50);
+      const end = Math.min(nodeText.length, Math.max(selectionStart, selectionEnd) + 50);
+      
+      context = nodeText.substring(start, end).trim();
+    }
+    
     if (onWordSelect) {
-      onWordSelect(selectedText)
+      onWordSelect(selectedText, context);
     }
     
     // 计算选择区域的位置
@@ -221,7 +236,9 @@ export function PassageReader({
     const locationInfo = findTextLocation(selection)
     setCurrentSelectionInfo(locationInfo)
     
-    setShowHighlightToolbar(true)
+    // Only show highlight toolbar if native toolbar is not shown
+    // or if we're explicitly disabling the native one
+    setShowHighlightToolbar(disableNativeToolbar);
   }
 
   // 添加高亮
@@ -428,125 +445,52 @@ export function PassageReader({
   // Simple reading mode with just the content
   if (simpleMode) {
     return (
-      <div className="prose max-w-none" onMouseUp={handleTextSelection}>
-        {title && <h1 className="text-xl font-bold mb-4">{title}</h1>}
-        {paragraphs.map((paragraph, index) => renderParagraphWithHighlights(paragraph, index))}
-        
-        {/* 高亮工具栏 */}
-        {showHighlightToolbar && (
-          <div 
-            className="fixed bg-white shadow-lg rounded-lg z-50 flex items-center p-1"
-            style={{ left: selectionPosition.x, top: selectionPosition.y, transform: 'translateX(-50%)' }}
-          >
-            <button 
-              className="p-2 hover:bg-yellow-100 rounded"
-              onClick={() => addHighlight('#FFEB3B80')}
-              title="黄色标记"
-            >
-              <div className="w-5 h-5 bg-yellow-300 rounded-full"></div>
-            </button>
-            <button 
-              className="p-2 hover:bg-green-100 rounded"
-              onClick={() => addHighlight('#A5D6A780')}
-              title="绿色标记"
-            >
-              <div className="w-5 h-5 bg-green-300 rounded-full"></div>
-            </button>
-            <button 
-              className="p-2 hover:bg-blue-100 rounded"
-              onClick={() => addHighlight('#90CAF980')}
-              title="蓝色标记"
-            >
-              <div className="w-5 h-5 bg-blue-300 rounded-full"></div>
-            </button>
-            <button 
-              className="p-2 hover:bg-gray-100 rounded"
-              onClick={lookupWord}
-              title="查词典"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
-              </svg>
-            </button>
-          </div>
+      <>
+        {disableNativeToolbar && (
+          <style jsx>{`
+            .disable-native-toolbar::selection {
+              background: rgba(59, 130, 246, 0.3);
+            }
+            .disable-native-toolbar::-moz-selection {
+              background: rgba(59, 130, 246, 0.3);
+            }
+            /* CSS to disable browser context menu */
+            .disable-native-toolbar {
+              -webkit-touch-callout: none;
+              -webkit-user-select: none;
+              -khtml-user-select: none;
+              -moz-user-select: none;
+              -ms-user-select: none;
+              user-select: none;
+            }
+            
+            /* Re-enable selection for content */
+            .disable-native-toolbar p,
+            .disable-native-toolbar h1,
+            .disable-native-toolbar h2,
+            .disable-native-toolbar h3,
+            .disable-native-toolbar h4,
+            .disable-native-toolbar h5,
+            .disable-native-toolbar h6,
+            .disable-native-toolbar span,
+            .disable-native-toolbar div {
+              -webkit-user-select: text;
+              -moz-user-select: text;
+              -ms-user-select: text;
+              user-select: text;
+            }
+          `}</style>
         )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center px-4 py-2 bg-white border-b border-gray-300 shadow-sm">
-        <div className="flex items-center justify-center bg-white border border-gray-300 rounded px-3 py-1 w-48">
-          <svg
-            className="w-5 h-5 text-gray-600 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span className="font-medium text-gray-700">
-            {formatTime(timeRemaining)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="px-4 py-1.5 text-gray-700 hover:bg-gray-100 border border-gray-300 rounded-md text-sm">
-            Review
-          </button>
-          <button
-            className="px-4 py-1.5 text-white bg-green-600 hover:bg-green-700 rounded-md text-sm flex items-center"
-            onClick={handleSubmitWithTimerStop}
-          >
-            Submit
-            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
-      
-      {/* Test Results Display */}
-      {testResults.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 border-b border-gray-300">
-          {testResults.map((test, index) => (
-            <div key={index} className="bg-teal-700 text-white rounded-md p-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-medium">Test{index + 1}</h3>
-                <div className="text-right">得分{test.score.toFixed(1)}</div>
-              </div>
-              {test.parts.map((part, partIndex) => (
-                <div key={partIndex} className="mt-3 bg-white text-black p-3 rounded-md">
-                  <div className="flex items-center mb-1">
-                    <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{part.name} {part.score && `答对${part.score}/${part.totalQuestions}`}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Main Content: Split View */}
-      <div className="flex-1 grid grid-cols-2 gap-0 overflow-hidden">
-        {/* Left Pane: Passage */}
-        <div className="overflow-y-auto bg-white p-6 border-r border-gray-300">
-          <div ref={containerRef} className="prose max-w-none" onMouseUp={handleTextSelection}>
-            {title && <h1 className="text-xl font-bold mb-4">{title}</h1>}
-            {paragraphs.map((paragraph, index) => renderParagraphWithHighlights(paragraph, index))}
-          </div>
+        
+        <div 
+          className={`prose max-w-none ${disableNativeToolbar ? 'disable-native-toolbar' : ''}`}
+          onMouseUp={handleTextSelection}
+        >
+          {title && <h1 className="text-xl font-bold mb-4">{title}</h1>}
+          {paragraphs.map((paragraph, index) => renderParagraphWithHighlights(paragraph, index))}
           
           {/* 高亮工具栏 */}
-          {showHighlightToolbar && (
+          {showHighlightToolbar && !disableNativeToolbar && (
             <div 
               className="fixed bg-white shadow-lg rounded-lg z-50 flex items-center p-1"
               style={{ left: selectionPosition.x, top: selectionPosition.y, transform: 'translateX(-50%)' }}
@@ -572,48 +516,199 @@ export function PassageReader({
               >
                 <div className="w-5 h-5 bg-blue-300 rounded-full"></div>
               </button>
-              <button 
-                className="p-2 hover:bg-gray-100 rounded"
-                onClick={lookupWord}
-                title="查词典"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
+            </div>
+          )}
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-gray-100">
+      {/* Header with info and controls */}
+      <div className="p-4 bg-white shadow-sm z-10 border-b border-gray-300">
+        <div className="max-w-full mx-auto flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-lg font-bold">{title}</h1>
+            <div className="flex items-center text-xs text-gray-500 mt-1">
+              {difficulty && (
+                <span className="mr-3 flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {difficulty}
+                </span>
+              )}
+              {topic && (
+                <span className="mr-3 flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  {topic}
+                </span>
+              )}
+              {wordCount > 0 && (
+                <span className="flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                  </svg>
+                  {wordCount} words
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {!simpleMode && (
+              <div className="px-3 py-1 bg-gray-100 rounded-md flex items-center gap-1 text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
+                <span className={timeRemaining < 300 ? 'text-red-500 font-bold' : ''}>
+                  {formatTime(timeRemaining)}
+                </span>
+              </div>
+            )}
+            {!simpleMode && onSubmit && (
+              <button
+                onClick={handleSubmitWithTimerStop}
+                className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+              >
+                Submit ({answeredCount}/{currentQuestions.length})
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {disableNativeToolbar && (
+        <style jsx global>{`
+          .disable-native-toolbar::selection {
+            background: rgba(59, 130, 246, 0.3);
+          }
+          .disable-native-toolbar::-moz-selection {
+            background: rgba(59, 130, 246, 0.3);
+          }
+          /* CSS to disable browser context menu */
+          .disable-native-toolbar {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+          }
+          
+          /* Re-enable selection for content */
+          .disable-native-toolbar p,
+          .disable-native-toolbar h1,
+          .disable-native-toolbar h2,
+          .disable-native-toolbar h3,
+          .disable-native-toolbar h4,
+          .disable-native-toolbar h5,
+          .disable-native-toolbar h6,
+          .disable-native-toolbar span,
+          .disable-native-toolbar div {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+          }
+        `}</style>
+      )}
+
+      <div className="flex-1 grid grid-cols-2 gap-0 overflow-hidden">
+        {/* Left Pane: Passage */}
+        <div className="overflow-y-auto bg-white p-6 border-r border-gray-300">
+          <div 
+            ref={containerRef} 
+            className={`prose max-w-none ${disableNativeToolbar ? 'disable-native-toolbar' : ''}`} 
+            onMouseUp={handleTextSelection}
+          >
+            {title && <h1 className="text-xl font-bold mb-4">{title}</h1>}
+            {paragraphs.map((paragraph, index) => renderParagraphWithHighlights(paragraph, index))}
+          </div>
+          
+          {/* 高亮工具栏 */}
+          {showHighlightToolbar && !disableNativeToolbar && (
+            <div 
+              className="fixed bg-white shadow-lg rounded-lg z-50 flex items-center p-1"
+              style={{ left: selectionPosition.x, top: selectionPosition.y, transform: 'translateX(-50%)' }}
+            >
+              <button 
+                className="p-2 hover:bg-yellow-100 rounded"
+                onClick={() => addHighlight('#FFEB3B80')}
+                title="黄色标记"
+              >
+                <div className="w-5 h-5 bg-yellow-300 rounded-full"></div>
+              </button>
+              <button 
+                className="p-2 hover:bg-green-100 rounded"
+                onClick={() => addHighlight('#A5D6A780')}
+                title="绿色标记"
+              >
+                <div className="w-5 h-5 bg-green-300 rounded-full"></div>
+              </button>
+              <button 
+                className="p-2 hover:bg-blue-100 rounded"
+                onClick={() => addHighlight('#90CAF980')}
+                title="蓝色标记"
+              >
+                <div className="w-5 h-5 bg-blue-300 rounded-full"></div>
               </button>
             </div>
           )}
         </div>
 
         {/* Right Pane: Questions */}
-        <div className="overflow-y-auto bg-white p-6">
+        <div className="overflow-y-auto bg-white p-6 border-l border-gray-300">
           <div className="mb-6">
-            <h2 className="font-semibold text-gray-800">
-              {currentPartData.name} Questions {(currentPage - 1) * questionsPerPage + 1}-
-              {Math.min(currentPage * questionsPerPage, currentQuestions.length)}
+            <h2 className="text-lg font-semibold mb-3">
+              {currentPartData.name || 'Questions'}
             </h2>
-            <p className="text-sm text-gray-600">
-              {currentQuestions.length > 0 && currentQuestions[0].type === 'multichoice' 
-                ? 'Choose the correct letter A, B, C or D.' 
-                : currentQuestions.length > 0 && currentQuestions[0].type === 'truefalse'
-                ? 'Read the statements and decide if they are TRUE or FALSE.'
-                : 'Answer the questions below.'}
-            </p>
-          </div>
-          <div className="space-y-6">
-            {pageQuestions.map((question) => (
-              <div key={question.id}>
-                <p className="mb-3 font-medium text-sm">
-                  {question.id}. {question.text}
-                </p>
-                {renderQuestion(question)}
-              </div>
-            ))}
+            <div className="space-y-6">
+              {pageQuestions.map((question, index) => (
+                <div key={question.id} className="p-4 border border-gray-200 rounded-md">
+                  <div className="flex">
+                    <div className="w-8 h-8 bg-blue-600 text-white flex items-center justify-center rounded-full font-medium">
+                      {(currentPage - 1) * questionsPerPage + index + 1}
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <div className="mb-3 text-base">
+                        {question.text}
+                      </div>
+                      {renderQuestion(question)}
+                      
+                      {/* Show correct answer in test results view */}
+                      {testResults.length > 0 && (
+                        <div className="mt-3 text-sm">
+                          {/* Find the result for this question */}
+                          {testResults.find(r => r.questionId === question.id)?.isCorrect ? (
+                            <div className="text-green-600 font-medium flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Correct
+                            </div>
+                          ) : (
+                            <div className="text-red-600 font-medium flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Incorrect. Correct answer: {testResults.find(r => r.questionId === question.id)?.correctAnswer}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Navigation Bar */}
+      {/* Footer pagination & part navigation */}
       <div className="flex items-center justify-between px-4 py-2 bg-white border-t border-gray-300">
         <div className="flex items-center gap-2">
           {parts.map((part, index) => (
