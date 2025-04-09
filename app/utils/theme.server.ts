@@ -1,12 +1,12 @@
 import * as cookie from 'cookie'
 
 const cookieName = 'en_theme'
-export type Theme = 'light' | 'dark'
+export type Theme = 'light' | 'dark' | 'solarized-light' | 'minimal'
 
 export function getTheme(request: Request): Theme | null {
 	const cookieHeader = request.headers.get('cookie')
 	const parsed = cookieHeader ? cookie.parse(cookieHeader)[cookieName] : 'light'
-	if (parsed === 'light' || parsed === 'dark') return parsed
+	if (parsed === 'light' || parsed === 'dark' || parsed === 'solarized-light' || parsed === 'minimal') return parsed as Theme
 	return null
 }
 

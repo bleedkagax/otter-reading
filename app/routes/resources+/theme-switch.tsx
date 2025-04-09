@@ -13,7 +13,7 @@ import {
 import { type Theme, setTheme } from '#app/utils/theme.server.ts'
 import { type Route } from './+types/theme-switch.ts'
 const ThemeFormSchema = z.object({
-	theme: z.enum(['system', 'light', 'dark']),
+	theme: z.enum(['system', 'light', 'dark', 'solarized-light', 'minimal']),
 	// this is useful for progressive enhancement
 	redirectTo: z.string().optional(),
 })
@@ -53,8 +53,26 @@ export function ThemeSwitch({
 
 	const optimisticMode = useOptimisticThemeMode()
 	const mode = optimisticMode ?? userPreference ?? 'system'
-	const nextMode =
-		mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system'
+	
+	// Define the theme cycle order
+	const getNextTheme = (currentTheme: string) => {
+		const themeOrder = ['system', 'light', 'dark', 'solarized-light', 'minimal'];
+		const currentIndex = themeOrder.indexOf(currentTheme);
+		const nextIndex = (currentIndex + 1) % themeOrder.length;
+		return themeOrder[nextIndex];
+	};
+	
+	const nextMode = getNextTheme(mode);
+	
+	// Theme display names
+	const themeNames = {
+		'system': 'System',
+		'light': 'Light',
+		'dark': 'Dark',
+		'solarized-light': 'Solarized Light',
+		'minimal': 'Minimal'
+	};
+	
 	const modeLabel = {
 		light: (
 			<Icon name="sun">
@@ -71,6 +89,16 @@ export function ThemeSwitch({
 				<span className="sr-only">System</span>
 			</Icon>
 		),
+		'solarized-light': (
+			<Icon name="palette">
+				<span className="sr-only">Solarized Light</span>
+			</Icon>
+		),
+		'minimal': (
+			<Icon name="layout">
+				<span className="sr-only">Minimal</span>
+			</Icon>
+		),
 	}
 
 	return (
@@ -85,12 +113,16 @@ export function ThemeSwitch({
 				)}
 			</ServerOnly>
 			<input type="hidden" name="theme" value={nextMode} />
-			<div className="flex gap-2">
+			<div className="flex items-center gap-2">
 				<button
 					type="submit"
-					className="flex size-8 cursor-pointer items-center justify-center"
+					className="group flex items-center gap-1 rounded-md border border-border px-2 py-1 hover:bg-muted"
+					title={`Current theme: ${themeNames[mode]}, click to switch to ${themeNames[nextMode]}`}
 				>
-					{modeLabel[mode]}
+					<span className="flex h-8 w-8 items-center justify-center">
+						{modeLabel[mode]}
+					</span>
+					<span className="text-sm hidden sm:inline-block">{themeNames[mode]}</span>
 				</button>
 			</div>
 		</fetcher.Form>
