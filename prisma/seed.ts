@@ -189,7 +189,7 @@ As cities continue to grow and global food systems face increasing pressure from
 			questions: [
 				{
 					type: 'multiple-choice',
-					questionText: 'According to the passage, approximately what percentage of the world's food is supplied by urban agriculture?',
+					questionText: "According to the passage, approximately what percentage of the world's food is supplied by urban agriculture?",
 					options: JSON.stringify([
 						'5-10%',
 						'15-20%',
@@ -197,7 +197,7 @@ As cities continue to grow and global food systems face increasing pressure from
 						'35-40%'
 					]),
 					correctAnswer: '15-20%',
-					explanation: 'The passage states: "Studies show that urban farms can be surprisingly productive—some estimates suggest that urban agriculture already supplies 15-20% of the world's food."',
+					explanation: "The passage states: 'Studies show that urban farms can be surprisingly productive—some estimates suggest that urban agriculture already supplies 15-20% of the world\'s food.'",
 					points: 1,
 					orderIndex: 1
 				},
@@ -215,7 +215,7 @@ As cities continue to grow and global food systems face increasing pressure from
 					questionText: 'The passage suggests that urban agriculture will eventually replace conventional rural farming.',
 					options: null,
 					correctAnswer: 'FALSE',
-					explanation: 'The passage explicitly states: "While it won't replace conventional agriculture entirely, the integration of food production into urban planning represents an important step toward more resilient, sustainable cities."',
+					explanation: "The passage explicitly states: 'While it won\'t replace conventional agriculture entirely, the integration of food production into urban planning represents an important step toward more resilient, sustainable cities.'",
 					points: 1,
 					orderIndex: 3
 				},
@@ -266,12 +266,12 @@ As cities continue to grow and global food systems face increasing pressure from
 
 	for (const passageData of passages) {
 		const { questions, ...passage } = passageData
-		
+
 		// 创建文章
 		const createdPassage = await prisma.ieltsPassage.create({
 			data: passage
 		})
-		
+
 		// 为每个文章创建问题
 		for (const question of questions) {
 			await prisma.ieltsQuestion.create({
@@ -520,7 +520,7 @@ async function seed() {
 	}
 
 	console.timeEnd(`🐨 Created admin user "kody"`)
-	
+
 	// 添加雅思阅读种子数据
 	await seedIeltsData()
 

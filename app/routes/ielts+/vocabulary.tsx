@@ -16,7 +16,7 @@ const STATUS_OPTIONS = [
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const userId = await requireUserId(request)
-  
+
   // 获取URL参数
   const url = new URL(request.url)
   const status = url.searchParams.get('status') || 'all'
@@ -24,14 +24,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const page = parseInt(url.searchParams.get('page') || '1')
   const limit = 50
   const skip = (page - 1) * limit
-  
+
   // 构建查询条件
   const where = {
     userId,
     ...(status !== 'all' ? { status } : {}),
     ...(search ? { word: { contains: search } } : {})
   }
-  
+
   // 获取词汇列表
   const vocabularies = await prisma.ieltsUserVocabulary.findMany({
     where,
@@ -47,10 +47,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
     }
   })
-  
+
   // 获取总数
   const totalCount = await prisma.ieltsUserVocabulary.count({ where })
-  
+
   // 统计信息
   const stats = await prisma.$transaction([
     prisma.ieltsUserVocabulary.count({ where: { userId, status: 'active' } }),
@@ -58,7 +58,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     prisma.ieltsUserVocabulary.count({ where: { userId, status: 'difficult' } }),
     prisma.ieltsUserVocabulary.count({ where: { userId } })
   ])
-  
+
   return json({
     vocabularies,
     totalCount,
@@ -79,83 +79,83 @@ export async function action({ request }: ActionFunctionArgs) {
   const userId = await requireUserId(request)
   const formData = await request.formData()
   const intent = formData.get('intent') as string
-  
+
   if (intent === 'updateStatus') {
     const id = formData.get('id') as string
     const status = formData.get('status') as string
-    
+
     if (!id || !status) {
       return json({ success: false, error: '参数错误' }, { status: 400 })
     }
-    
+
     // 验证是否是用户的单词
     const vocab = await prisma.ieltsUserVocabulary.findFirst({
       where: { id, userId }
     })
-    
+
     if (!vocab) {
       return json({ success: false, error: '单词不存在或无权限' }, { status: 403 })
     }
-    
+
     // 更新状态
     await prisma.ieltsUserVocabulary.update({
       where: { id },
       data: { status }
     })
-    
+
     return json({ success: true })
   }
-  
+
   if (intent === 'delete') {
     const id = formData.get('id') as string
-    
+
     if (!id) {
       return json({ success: false, error: '参数错误' }, { status: 400 })
     }
-    
+
     // 验证是否是用户的单词
     const vocab = await prisma.ieltsUserVocabulary.findFirst({
       where: { id, userId }
     })
-    
+
     if (!vocab) {
       return json({ success: false, error: '单词不存在或无权限' }, { status: 403 })
     }
-    
+
     // 删除单词
     await prisma.ieltsUserVocabulary.delete({
       where: { id }
     })
-    
+
     return json({ success: true })
   }
-  
+
   if (intent === 'updateNote') {
     const id = formData.get('id') as string
     const note = formData.get('note') as string
-    
+
     if (!id) {
       return json({ success: false, error: '参数错误' }, { status: 400 })
     }
-    
+
     // 验证是否是用户的单词
     const vocab = await prisma.ieltsUserVocabulary.findFirst({
       where: { id, userId }
     })
-    
+
     if (!vocab) {
       return json({ success: false, error: '单词不存在或无权限' }, { status: 403 })
     }
-    
+
     // 更新笔记
     await prisma.ieltsUserVocabulary.update({
       where: { id },
       data: { note }
     })
-    
+
     return json({ success: true })
   }
-  
+
   return json({ success: false, error: '未知操作' }, { status: 400 })
 }
 
@@ -168,23 +168,23 @@ interface VocabularyWithPassage extends IeltsVocabulary {
 }
 
 export default function VocabularyPage() {
-  const { 
-    vocabularies, 
+  const {
+    vocabularies,
     stats,
-    totalCount, 
-    page, 
-    status, 
-    search, 
-    totalPages 
+    totalCount,
+    page,
+    status,
+    search,
+    totalPages
   } = useLoaderData<typeof loader>()
-  
+
   const [selectedVocab, setSelectedVocab] = useState<string | null>(null)
   const [editNote, setEditNote] = useState<{id: string, note: string} | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortMethod, setSortMethod] = useState<'date' | 'word'>('date')
 
   // 根据搜索词过滤词汇
-  const filteredVocabulary = vocabularies.filter((item: VocabularyWithPassage) => 
+  const filteredVocabulary = vocabularies.filter((item: VocabularyWithPassage) =>
     item.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.note && item.note.toLowerCase().includes(searchTerm.toLowerCase()))
   )
@@ -197,7 +197,7 @@ export default function VocabularyPage() {
       return a.word.localeCompare(b.word)
     }
   })
-  
+
   // 生成分页链接
   const getPaginationLink = (p: number) => {
     const searchParams = new URLSearchParams()
@@ -206,39 +206,51 @@ export default function VocabularyPage() {
     searchParams.set('page', p.toString())
     return `?${searchParams.toString()}`
   }
-  
+
   // 提交笔记更新
   const handleNoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editNote) return
-    
+
     try {
       const formData = new FormData()
       formData.append('intent', 'updateNote')
       formData.append('id', editNote.id)
       formData.append('note', editNote.note)
-      
+
       await fetch('/ielts/vocabulary', {
         method: 'POST',
         body: formData
       })
-      
+
       setEditNote(null)
     } catch (error) {
       console.error('保存笔记出错:', error)
     }
   }
-  
+
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4">
+    <div className="min-h-screen bg-background text-foreground py-6 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">我的生词本</h1>
             <p className="text-gray-600 mt-1">管理你的IELTS学习词汇</p>
           </div>
-          
+
           <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
+            <a
+              href="/ielts/vocabulary/review"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+            >
+              词汇复习
+            </a>
+            <a
+              href="/ielts/vocabulary/test"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              词汇测试
+            </a>
             <input
               type="text"
               placeholder="即时搜索..."
@@ -255,7 +267,7 @@ export default function VocabularyPage() {
               <option value="word">按字母排序</option>
             </select>
           </div>
-          
+
           <Form className="mt-4 md:mt-0 flex gap-2">
             <input
               type="text"
@@ -283,29 +295,29 @@ export default function VocabularyPage() {
             </button>
           </Form>
         </div>
-        
+
         {/* 统计信息 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="bg-card text-card-foreground rounded-lg shadow-sm p-4 border border-border">
             <p className="text-sm text-gray-500">总单词数</p>
             <p className="text-2xl font-bold mt-1">{stats.total}</p>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="bg-card text-card-foreground rounded-lg shadow-sm p-4 border border-border">
             <p className="text-sm text-gray-500">学习中</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">{stats.active}</p>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="bg-card text-card-foreground rounded-lg shadow-sm p-4 border border-border">
             <p className="text-sm text-gray-500">已掌握</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{stats.mastered}</p>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="bg-card text-card-foreground rounded-lg shadow-sm p-4 border border-border">
             <p className="text-sm text-gray-500">困难单词</p>
             <p className="text-2xl font-bold text-red-600 mt-1">{stats.difficult}</p>
           </div>
         </div>
-        
+
         {/* 单词列表 */}
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-card text-card-foreground rounded-lg shadow-lg border border-border overflow-hidden">
           <div className="overflow-x-auto">
             {sortedVocabulary.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
@@ -351,7 +363,7 @@ export default function VocabularyPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {vocab.passage ? (
-                          <a 
+                          <a
                             href={IELTS_ROUTES.passageRead(vocab.passage.id)}
                             className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
                           >
@@ -406,7 +418,7 @@ export default function VocabularyPage() {
                             </button>
                           </form>
                         ) : (
-                          <div 
+                          <div
                             onClick={() => setEditNote({ id: vocab.id, note: vocab.note || '' })}
                             className="text-sm text-gray-600 cursor-pointer hover:text-blue-600"
                             title="点击编辑笔记"
@@ -454,7 +466,7 @@ export default function VocabularyPage() {
               </table>
             )}
           </div>
-          
+
           {/* 分页 */}
           {totalPages > 1 && (
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
@@ -485,4 +497,4 @@ export default function VocabularyPage() {
       </div>
     </div>
   )
-} 
+}
