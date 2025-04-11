@@ -63,10 +63,13 @@ export interface IeltsVocabulary {
   passageId: string
   word: string
   context: string
-  status: string
+  status?: string // 兼容旧版本
+  mastered: boolean
   note: string
   createdAt: Date
   updatedAt: Date
+  lastReviewed?: Date | null
+  reviewCount?: number
 }
 
 // 常用工具函数
@@ -105,4 +108,4 @@ export const IELTS_ROUTES = {
   passageRead: (passageId: string) => `/ielts/passages/${passageId}/read`,
   passagePractice: (passageId: string) => `/ielts/passages/${passageId}/practice`,
   passageTest: (passageId: string) => `/ielts/passages/${passageId}/test`,
-} 
+}

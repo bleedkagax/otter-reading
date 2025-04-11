@@ -12,7 +12,7 @@ interface LoaderData {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request)
-  
+
   // 获取所有文章，按照难度和主题排序
   const passages = await prisma.ieltsPassage.findMany({
     orderBy: [
@@ -21,7 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       { createdAt: 'desc' }
     ],
   })
-  
+
   return json<LoaderData>({
     passages,
   })
@@ -32,51 +32,62 @@ export default function IeltsPassages() {
   const [filter, setFilter] = useState({ difficulty: 'all', topic: 'all', search: '' })
   const [filteredPassages, setFilteredPassages] = useState(passages)
   const [showDebug, setShowDebug] = useState(false)
-  
+
   // 获取所有可用的主题
   const topics = Array.from(new Set(passages.map(p => p.topic))).filter(Boolean)
-  
+
   // 当筛选条件变化时，过滤文章
   useEffect(() => {
     let result = [...passages]
-    
+
     if (filter.difficulty !== 'all') {
       result = result.filter(p => p.difficulty === filter.difficulty)
     }
-    
+
     if (filter.topic !== 'all') {
       result = result.filter(p => p.topic === filter.topic)
     }
-    
+
     if (filter.search.trim()) {
       const searchLower = filter.search.toLowerCase()
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(searchLower) || 
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(searchLower) ||
         p.content.toLowerCase().includes(searchLower)
       )
     }
-    
+
     setFilteredPassages(result)
   }, [filter, passages])
-  
+
   return (
     <div>
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">雅思阅读文章库</h1>
-          <Link
-            to="/ielts/import"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors shadow-sm"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            导入PDF文章
-          </Link>
+          <div className="flex space-x-2">
+            <Link
+              to="/ielts/generate"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              AI生成文章
+            </Link>
+            <Link
+              to="/ielts/import"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              导入PDF
+            </Link>
+          </div>
         </div>
-        
+
         <p className="text-gray-600 mb-6">浏览和练习各种难度思阅读文章</p>
-        
+
         {/* 筛选器 */}
         <div className="flex flex-wrap gap-6">
           <div className="w-full md:w-auto flex-1 md:max-w-xs">
@@ -96,7 +107,7 @@ export default function IeltsPassages() {
               />
             </div>
           </div>
-          
+
           <div className="w-full md:w-auto">
             <select
               id="difficulty"
@@ -111,7 +122,7 @@ export default function IeltsPassages() {
               <option value="hard">困难</option>
             </select>
           </div>
-          
+
           <div className="w-full md:w-auto">
             <select
               id="topic"
@@ -126,7 +137,7 @@ export default function IeltsPassages() {
               ))}
             </select>
           </div>
-          
+
           <div className="w-full md:w-auto">
             <button
               onClick={() => setFilter({ difficulty: 'all', topic: 'all', search: '' })}
@@ -136,13 +147,13 @@ export default function IeltsPassages() {
             </button>
           </div>
         </div>
-        
+
         {/* 结果数量展示 */}
         <div className="mt-4 text-sm text-gray-500">
           找到 {filteredPassages.length} 篇文章 {filter.difficulty !== 'all' || filter.topic !== 'all' || filter.search ? '(已筛选)' : ''}
         </div>
       </div>
-      
+
       {/* 开发调试 - 显示文章ID */}
       {showDebug && (
         <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs overflow-auto">
@@ -164,7 +175,7 @@ export default function IeltsPassages() {
           </ul>
         </div>
       )}
-      
+
       {/* 文章列表 */}
       {filteredPassages.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -192,7 +203,7 @@ export default function IeltsPassages() {
           </div>
         </div>
       )}
-      
+
       {/* 开发功能按钮 */}
       {!showDebug && (
         <div className="fixed bottom-4 right-4 z-10">
@@ -210,4 +221,4 @@ export default function IeltsPassages() {
       )}
     </div>
   )
-} 
+}

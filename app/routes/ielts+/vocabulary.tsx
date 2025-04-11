@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Form, useLoaderData } from 'react-router'
+import { Form, Link, useLoaderData } from 'react-router'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from '#app/utils/router-helpers'
@@ -26,16 +26,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const skip = (page - 1) * limit
 
   // 构建查询条件
-  const where = {
+  let where: any = {
     userId,
-    ...(status !== 'all' ? { status } : {}),
     ...(search ? { word: { contains: search } } : {})
   }
 
-  // 获取词汇列表
+  // 根据状态过滤 - 暂时使用mastered字段
+  if (status === 'mastered') {
+    where.mastered = true
+  } else if (status === 'active' || status === 'difficult') {
+    where.mastered = false
+  }
+
+  // 获取词汇列表 - 暂时使用createdAt代替updatedAt
   const vocabularies = await prisma.ieltsUserVocabulary.findMany({
     where,
-    orderBy: { updatedAt: 'desc' },
+    orderBy: { createdAt: 'desc' }, // 暂时使用createdAt
     skip,
     take: limit,
     include: {
@@ -48,14 +54,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
   })
 
+  // 获取待复习的词汇数量 - 暂时使用所有未掌握的词汇
+  const dueCount = await prisma.ieltsUserVocabulary.count({
+    where: {
+      userId,
+      mastered: false
+    }
+  })
+
   // 获取总数
   const totalCount = await prisma.ieltsUserVocabulary.count({ where })
 
-  // 统计信息
+  // 统计信息 - 暂时使用mastered字段
   const stats = await prisma.$transaction([
-    prisma.ieltsUserVocabulary.count({ where: { userId, status: 'active' } }),
-    prisma.ieltsUserVocabulary.count({ where: { userId, status: 'mastered' } }),
-    prisma.ieltsUserVocabulary.count({ where: { userId, status: 'difficult' } }),
+    prisma.ieltsUserVocabulary.count({ where: { userId, mastered: false } }), // active
+    prisma.ieltsUserVocabulary.count({ where: { userId, mastered: true } }),  // mastered
+    prisma.ieltsUserVocabulary.count({ where: { userId, mastered: false } }), // difficult (same as active for now)
     prisma.ieltsUserVocabulary.count({ where: { userId } })
   ])
 
@@ -66,7 +80,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       active: stats[0],
       mastered: stats[1],
       difficult: stats[2],
-      total: stats[3]
+      total: stats[3],
+      due: dueCount
     },
     page,
     status,
@@ -89,18 +104,27 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     // 验证是否是用户的单词
-    const vocab = await prisma.ieltsUserVocabulary.findFirst({
+    const userVocab = await prisma.ieltsUserVocabulary.findFirst({
       where: { id, userId }
     })
 
-    if (!vocab) {
+    if (!userVocab) {
       return json({ success: false, error: '单词不存在或无权限' }, { status: 403 })
     }
+
+    // 更新状态 - 暂时使用mastered字段
+    const mastered = status === 'mastered'
 
     // 更新状态
     await prisma.ieltsUserVocabulary.update({
       where: { id },
-      data: { status }
+      data: {
+        mastered,
+        lastReviewed: new Date(),
+        reviewCount: {
+          increment: 1
+        }
+      }
     })
 
     return json({ success: true })
@@ -239,18 +263,24 @@ export default function VocabularyPage() {
           </div>
 
           <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
-            <a
-              href="/ielts/vocabulary/review"
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+            <Link
+              to="/ielts/vocabulary/learn?mode=due"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors flex items-center"
             >
-              词汇复习
-            </a>
-            <a
-              href="/ielts/vocabulary/test"
-              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              词汇学习 {stats.due > 0 && <span className="ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{stats.due}</span>}
+            </Link>
+            <Link
+              to="/ielts/vocabulary/test"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors flex items-center"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
               词汇测试
-            </a>
+            </Link>
             <input
               type="text"
               placeholder="即时搜索..."
@@ -379,12 +409,11 @@ export default function VocabularyPage() {
                           <input type="hidden" name="id" value={vocab.id} />
                           <select
                             name="status"
-                            defaultValue={vocab.status}
+                            defaultValue={vocab.mastered ? 'mastered' : 'active'}
                             onChange={(e) => e.target.form?.submit()}
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              vocab.status === 'active' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
-                              vocab.status === 'mastered' ? 'bg-green-100 text-green-800 border border-green-300' :
-                              'bg-red-100 text-red-800 border border-red-300'
+                              vocab.mastered ? 'bg-green-100 text-green-800 border border-green-300' :
+                              'bg-blue-100 text-blue-800 border border-blue-300'
                             }`}
                           >
                             <option value="active">学习中</option>
