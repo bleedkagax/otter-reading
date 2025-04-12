@@ -384,7 +384,7 @@ export function PassageReader({
     }
   }
 
-  // 渲染带有高亮的段落
+  // 渲染带有高亮的段落 - Notion style
   const renderParagraphWithHighlights = (paragraph: string, paragraphIndex: number) => {
     // 找出属于这个段落的高亮
     const paragraphHighlights = userHighlights.filter(h =>
@@ -395,7 +395,7 @@ export function PassageReader({
 
     // 如果没有高亮，直接返回段落
     if (paragraphHighlights.length === 0) {
-      return <p key={paragraphIndex} className="mb-4 text-sm leading-relaxed text-foreground">{paragraph}</p>
+      return <p key={paragraphIndex} className="notion-text">{paragraph}</p>
     }
 
     // 按照位置对高亮进行排序
@@ -425,11 +425,29 @@ export function PassageReader({
         result.push(paragraph.substring(lastIndex, startPos))
       }
 
-      // 添加高亮的文本
+      // 添加高亮的文本 - 使用Notion风格的高亮
+      // Map color to Notion highlight classes
+      let highlightClass = 'notion-highlight-yellow';
+
+      if (highlight.color === 'rgba(173, 216, 230, 0.7)' ||
+          highlight.color === 'rgba(0, 120, 215, 0.3)' ||
+          highlight.color.includes('blue')) {
+        highlightClass = 'notion-highlight-blue';
+      } else if (highlight.color === 'rgba(152, 251, 152, 0.7)' ||
+                highlight.color.includes('green')) {
+        highlightClass = 'notion-highlight-green';
+      } else if (highlight.color === 'rgba(255, 182, 193, 0.7)' ||
+                highlight.color.includes('pink')) {
+        highlightClass = 'notion-highlight-pink';
+      } else if (highlight.color === 'rgba(230, 230, 250, 0.7)' ||
+                highlight.color.includes('purple')) {
+        highlightClass = 'notion-highlight-purple';
+      }
+
       result.push(
         <span
           key={`highlight-${startPos}`}
-          style={{ backgroundColor: highlight.color, padding: '0 2px', borderRadius: '2px' }}
+          className={highlightClass}
         >
           {highlight.text}
         </span>
@@ -443,7 +461,7 @@ export function PassageReader({
       result.push(paragraph.substring(lastIndex))
     }
 
-    return <p key={paragraphIndex} className="mb-4 text-sm leading-relaxed text-foreground">{result}</p>
+    return <p key={paragraphIndex} className="notion-text">{result}</p>
   }
 
   // Simple reading mode with just the content
@@ -453,10 +471,10 @@ export function PassageReader({
         {disableNativeToolbar && (
           <style>{`
             .disable-native-toolbar::selection {
-              background: rgba(59, 130, 246, 0.3);
+              background: var(--notion-bg-blue);
             }
             .disable-native-toolbar::-moz-selection {
-              background: rgba(59, 130, 246, 0.3);
+              background: var(--notion-bg-blue);
             }
             /* CSS to disable browser context menu */
             .disable-native-toolbar {
@@ -487,38 +505,52 @@ export function PassageReader({
         )}
 
         <div
-          className={`prose max-w-none dark:prose-invert ${disableNativeToolbar ? 'disable-native-toolbar' : ''}`}
+          className={`notion-reader-container ${disableNativeToolbar ? 'disable-native-toolbar' : ''}`}
           onMouseUp={handleTextSelection}
         >
-          {title && <h1 className="text-xl font-bold mb-4">{title}</h1>}
+          {title && <h1 className="notion-h1">{title}</h1>}
           {paragraphs.map((paragraph, index) => renderParagraphWithHighlights(paragraph, index))}
 
-          {/* 高亮工具栏 */}
+          {/* 高亮工具栏 - Notion style */}
           {showHighlightToolbar && !disableNativeToolbar && (
             <div
-              className="fixed bg-white shadow-lg rounded-lg z-50 flex items-center p-1"
-              style={{ left: selectionPosition.x, top: selectionPosition.y, transform: 'translateX(-50%)' }}
+              className="notion-selection-toolbar notion-fade-in"
+              style={{ left: selectionPosition.x, top: selectionPosition.y }}
             >
               <button
-                className="p-2 hover:bg-yellow-100 rounded"
+                className="notion-selection-toolbar-item"
                 onClick={() => addHighlight('#FFEB3B80')}
                 title="黄色标记"
               >
-                <div className="w-5 h-5 bg-yellow-300 rounded-full"></div>
+                <div className="w-4 h-4 rounded-full bg-notion-bg-yellow border border-notion-yellow"></div>
               </button>
               <button
-                className="p-2 hover:bg-green-100 rounded"
+                className="notion-selection-toolbar-item"
                 onClick={() => addHighlight('#A5D6A780')}
                 title="绿色标记"
               >
-                <div className="w-5 h-5 bg-green-300 rounded-full"></div>
+                <div className="w-4 h-4 rounded-full bg-notion-bg-green border border-notion-green"></div>
               </button>
               <button
-                className="p-2 hover:bg-blue-100 rounded"
+                className="notion-selection-toolbar-item"
                 onClick={() => addHighlight('#90CAF980')}
                 title="蓝色标记"
               >
-                <div className="w-5 h-5 bg-blue-300 rounded-full"></div>
+                <div className="w-4 h-4 rounded-full bg-notion-bg-blue border border-notion-blue"></div>
+              </button>
+              <button
+                className="notion-selection-toolbar-item"
+                onClick={() => addHighlight('#E1BEE780')}
+                title="紫色标记"
+              >
+                <div className="w-4 h-4 rounded-full bg-notion-bg-purple border border-notion-purple"></div>
+              </button>
+              <button
+                className="notion-selection-toolbar-item"
+                onClick={() => addHighlight('#F8BBD080')}
+                title="粉色标记"
+              >
+                <div className="w-4 h-4 rounded-full bg-notion-bg-pink border border-notion-pink"></div>
               </button>
             </div>
           )}
@@ -528,13 +560,13 @@ export function PassageReader({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Header with info and controls */}
-      <div className="p-4 bg-card text-card-foreground shadow-sm z-10 border-b border-border">
-        <div className="max-w-full mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div className="flex flex-col h-full bg-notion-bg-default">
+      {/* Header with info and controls - Notion style */}
+      <div className="p-4 bg-notion-bg-default shadow-sm z-10 border-b border-gray-200">
+        <div className="notion-page flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h1 className="text-lg font-bold">{title}</h1>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
+            <h1 className="notion-h2">{title}</h1>
+            <div className="flex items-center text-xs text-notion-text-gray mt-1">
               {difficulty && (
                 <span className="mr-3 flex items-center">
                   <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -563,11 +595,11 @@ export function PassageReader({
           </div>
           <div className="flex items-center gap-3 mt-2 sm:mt-0">
             {!simpleMode && (
-              <div className="px-3 py-1 bg-muted rounded-md flex items-center gap-1 text-sm">
+              <div className="notion-block px-3 py-1 flex items-center gap-1 text-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className={timeRemaining < 300 ? 'text-red-500 font-bold' : ''}>
+                <span className={timeRemaining < 300 ? 'text-notion-text-red font-bold' : ''}>
                   {formatTime(timeRemaining)}
                 </span>
               </div>
@@ -575,7 +607,7 @@ export function PassageReader({
             {!simpleMode && onSubmit && (
               <button
                 onClick={handleSubmitWithTimerStop}
-                className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
+                className="notion-block px-3 py-1 bg-notion-bg-blue text-notion-text-blue rounded-md text-sm hover:bg-notion-bg-blue/80 transition-colors"
               >
                 Submit ({answeredCount}/{currentQuestions.length})
               </button>
@@ -587,10 +619,10 @@ export function PassageReader({
       {disableNativeToolbar && (
         <style>{`
           .disable-native-toolbar::selection {
-            background: rgba(59, 130, 246, 0.3);
+            background: var(--notion-bg-blue);
           }
           .disable-native-toolbar::-moz-selection {
-            background: rgba(59, 130, 246, 0.3);
+            background: var(--notion-bg-blue);
           }
           /* CSS to disable browser context menu */
           .disable-native-toolbar {
@@ -621,63 +653,70 @@ export function PassageReader({
       )}
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden">
-        {/* Left Pane: Passage */}
-        <div className="overflow-y-auto bg-card text-card-foreground p-4 md:p-6 border-b lg:border-b-0 lg:border-r border-border">
+        {/* Left Pane: Passage - Notion style */}
+        <div className="overflow-y-auto bg-notion-bg-default p-4 md:p-6 border-b lg:border-b-0 lg:border-r border-gray-200">
           <div
             ref={containerRef}
-            className={`prose max-w-none dark:prose-invert ${disableNativeToolbar ? 'disable-native-toolbar' : ''}`}
+            className={`notion-reader-container ${disableNativeToolbar ? 'disable-native-toolbar' : ''}`}
             onMouseUp={handleTextSelection}
           >
-            {title && <h1 className="text-xl font-bold mb-4">{title}</h1>}
+            {title && <h1 className="notion-h1">{title}</h1>}
             {paragraphs.map((paragraph, index) => renderParagraphWithHighlights(paragraph, index))}
           </div>
 
-          {/* 高亮工具栏 */}
+          {/* 高亮工具栏 - Notion style */}
           {showHighlightToolbar && !disableNativeToolbar && (
             <div
-              className="fixed bg-card shadow-lg rounded-lg z-50 flex items-center p-1"
-              style={{ left: selectionPosition.x, top: selectionPosition.y, transform: 'translateX(-50%)' }}
+              className="notion-selection-toolbar notion-fade-in"
+              style={{ left: selectionPosition.x, top: selectionPosition.y }}
             >
               <button
-                className="p-2 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded"
+                className="notion-selection-toolbar-item"
                 onClick={() => addHighlight('#FFEB3B80')}
                 title="黄色标记"
               >
-                <div className="w-5 h-5 bg-yellow-300 rounded-full"></div>
+                <div className="w-4 h-4 rounded-full bg-notion-bg-yellow border border-notion-yellow"></div>
               </button>
               <button
-                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"
+                className="notion-selection-toolbar-item"
                 onClick={() => addHighlight('#A5D6A780')}
                 title="绿色标记"
               >
-                <div className="w-5 h-5 bg-green-300 rounded-full"></div>
+                <div className="w-4 h-4 rounded-full bg-notion-bg-green border border-notion-green"></div>
               </button>
               <button
-                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+                className="notion-selection-toolbar-item"
                 onClick={() => addHighlight('#90CAF980')}
                 title="蓝色标记"
               >
-                <div className="w-5 h-5 bg-blue-300 rounded-full"></div>
+                <div className="w-4 h-4 rounded-full bg-notion-bg-blue border border-notion-blue"></div>
+              </button>
+              <button
+                className="notion-selection-toolbar-item"
+                onClick={() => addHighlight('#E1BEE780')}
+                title="紫色标记"
+              >
+                <div className="w-4 h-4 rounded-full bg-notion-bg-purple border border-notion-purple"></div>
               </button>
             </div>
           )}
         </div>
 
-        {/* Right Pane: Questions */}
-        <div className="overflow-y-auto bg-card text-card-foreground p-4 md:p-6 border-t lg:border-t-0 lg:border-l border-border">
+        {/* Right Pane: Questions - Notion style */}
+        <div className="overflow-y-auto bg-notion-bg-default p-4 md:p-6 border-t lg:border-t-0 lg:border-l border-gray-200">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-3">
+            <h2 className="notion-h2 mb-3">
               {currentPartData.name || 'Questions'}
             </h2>
             <div className="space-y-6">
               {pageQuestions.map((question, index) => (
-                <div key={question.id} className="p-4 border border-gray-200 rounded-md">
+                <div key={question.id} className="notion-card p-4">
                   <div className="flex">
-                    <div className="w-8 h-8 bg-blue-600 text-white flex items-center justify-center rounded-full font-medium">
+                    <div className="w-8 h-8 bg-notion-bg-blue text-notion-text-blue flex items-center justify-center rounded-full font-medium">
                       {(currentPage - 1) * questionsPerPage + index + 1}
                     </div>
                     <div className="ml-3 flex-1">
-                      <div className="mb-3 text-base">
+                      <div className="mb-3 notion-text">
                         {question.text}
                       </div>
                       {renderQuestion(question)}
@@ -687,14 +726,14 @@ export function PassageReader({
                         <div className="mt-3 text-sm">
                           {/* Find the result for this question */}
                           {testResults.find(r => r.questionId === String(question.id))?.isCorrect ? (
-                            <div className="text-green-600 font-medium flex items-center">
+                            <div className="text-notion-text-green font-medium flex items-center">
                               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
                               Correct
                             </div>
                           ) : (
-                            <div className="text-red-600 font-medium flex items-center">
+                            <div className="text-notion-text-red font-medium flex items-center">
                               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
@@ -712,16 +751,16 @@ export function PassageReader({
         </div>
       </div>
 
-      {/* Footer pagination & part navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 bg-card text-card-foreground border-t border-border gap-2">
+      {/* Footer pagination & part navigation - Notion style */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 bg-notion-bg-default border-t border-gray-200 gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {parts.map((part, index) => (
             <button
               key={part.id}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`notion-block px-3 py-1 rounded-md text-sm font-medium ${
                 currentPart === index
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-notion-bg-blue text-notion-text-blue'
+                  : 'hover:bg-notion-bg-gray'
               }`}
               onClick={() => handlePartChange(index)}
             >
@@ -735,8 +774,8 @@ export function PassageReader({
               key={i + 1}
               className={`w-8 h-8 rounded text-sm font-medium ${
                 currentPage === i + 1
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-notion-bg-blue text-notion-text-blue'
+                  : 'hover:bg-notion-bg-gray'
               }`}
               onClick={() => setCurrentPage(i + 1)}
             >
@@ -745,10 +784,10 @@ export function PassageReader({
           ))}
         </div>
 
-        {/* 高亮管理 */}
+        {/* 高亮管理 - Notion style */}
         <div className="flex items-center">
           {userHighlights.length > 0 && (
-            <div className="text-xs text-muted-foreground mr-2">
+            <div className="text-xs text-notion-text-gray mr-2">
               {userHighlights.length} 处标记
             </div>
           )}
