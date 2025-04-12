@@ -23,16 +23,28 @@ interface ReadingTestResult {
   parts: Part[]
 }
 
+interface HighlightedSection {
+  start: number
+  end: number
+  color: string
+  text: string
+  paragraphIndex: number
+  textOffset: number
+}
+
 interface ReadingPracticeViewProps {
   title: string
   content: string
   parts?: Part[]
   timeLimit?: number
   wordCount?: number
-  difficulty?: string 
+  difficulty?: string
   topic?: string
   testResults?: ReadingTestResult[]
+  highlights?: HighlightedSection[]
   onSubmit?: (answers: Record<number, string>) => void
+  onHighlight?: (highlight: HighlightedSection) => void
+  onWordSelect?: (word: string, context?: string) => void
 }
 
 export function ReadingPracticeView({
@@ -44,7 +56,10 @@ export function ReadingPracticeView({
   difficulty = '',
   topic = '',
   testResults = [],
-  onSubmit
+  highlights = [],
+  onSubmit,
+  onHighlight,
+  onWordSelect
 }: ReadingPracticeViewProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
@@ -64,7 +79,10 @@ export function ReadingPracticeView({
       difficulty={difficulty}
       topic={topic}
       testResults={testResults}
+      highlights={highlights}
       onSubmit={handleSubmit}
+      onHighlight={onHighlight}
+      onWordSelect={onWordSelect}
     />
   );
-} 
+}

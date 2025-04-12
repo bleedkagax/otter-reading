@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '#app/utils/router-helpers'
 import { prisma } from '#app/utils/db.server'
 import { PassageReader } from '#app/components/ielts/PassageReader'
+import { getUserId } from '#app/utils/auth.server'
+import { useLoaderData } from 'react-router'
 
 // 简单定义MetaFunction类型
 interface MetaFunction {
@@ -8,6 +11,103 @@ interface MetaFunction {
 }
 
 export const meta: MetaFunction = () => [{ title: '雅思阅读练习' }]
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const userId = await getUserId(request)
+  if (!userId) {
+    return json({ highlights: [] })
+  }
+
+  // 查找用户的所有高亮标记
+  const userVocabulary = await prisma.ieltsUserVocabulary.findMany({
+    where: {
+      userId,
+      passageId: null // 只获取没有关联到特定文章的高亮
+    }
+  })
+
+  // 将用户词汇转换为高亮
+  const highlights = userVocabulary.map(vocab => {
+    // 尝试从 note 字段解析位置信息
+    let paragraphIndex: number | undefined = undefined;
+    let textOffset: number | undefined = undefined;
+
+    if (vocab.note) {
+      try {
+        const positionData = JSON.parse(vocab.note);
+        if (positionData && typeof positionData === 'object') {
+          paragraphIndex = positionData.paragraphIndex;
+          textOffset = positionData.textOffset;
+        }
+      } catch (e) {
+        console.error('Error parsing position data:', e);
+      }
+    }
+
+    return {
+      start: 0,
+      end: 0,
+      color: vocab.mastered ? '#A5D6A780' : '#FFEB3B80', // 已掌握的词用绿色，未掌握的词用黄色
+      text: vocab.word,
+      paragraphIndex: paragraphIndex || 0,
+      textOffset: textOffset || 0
+    };
+  })
+
+  return json({ highlights })
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const userId = await getUserId(request)
+  if (!userId) {
+    return json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const formData = await request.formData()
+  const intent = formData.get('intent') as string
+
+  // 处理添加高亮/生词
+  if (intent === 'add_highlight') {
+    const text = formData.get('text') as string
+    const color = formData.get('color') as string
+    const paragraphIndex = parseInt(formData.get('paragraphIndex') as string) || 0
+    const textOffset = parseInt(formData.get('textOffset') as string) || 0
+
+    if (!text) {
+      return json({ error: 'No text provided' }, { status: 400 })
+    }
+
+    try {
+      // 将位置信息存储在note字段中
+      const positionData = JSON.stringify({
+        paragraphIndex,
+        textOffset
+      })
+
+      // 保存到用户词汇表
+      await prisma.ieltsUserVocabulary.create({
+        data: {
+          userId,
+          word: text,
+          context: text,
+          note: positionData,  // 保存位置信息
+          mastered: color.includes('green'), // 绿色表示已掌握
+          createdAt: new Date()
+        }
+      })
+
+      return json({
+        success: true,
+        message: `Added "${text}" to vocabulary at paragraph ${paragraphIndex}, offset ${textOffset}`
+      })
+    } catch (error) {
+      console.error('Error saving highlighted word:', error)
+      return json({ error: 'Failed to save highlight' }, { status: 500 })
+    }
+  }
+
+  return json({ error: 'Invalid intent' }, { status: 400 })
+}
 
 // 创建一个示例阅读文章的数据
 const examplePassage = {
@@ -81,6 +181,7 @@ Curiously, flash-freezing—the technology that gave birth to the frozen food in
 };
 
 export default function IeltsReadingPractice() {
+  const { highlights: savedHighlights } = useLoaderData<typeof loader>();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -99,6 +200,14 @@ export default function IeltsReadingPractice() {
   const [highlightedText, setHighlightedText] = useState('');
   const [showHighlightTooltip, setShowHighlightTooltip] = useState(false);
   const [highlightPosition, setHighlightPosition] = useState({ x: 0, y: 0 });
+  const [userHighlights, setUserHighlights] = useState<Array<{
+    start: number;
+    end: number;
+    color: string;
+    text: string;
+    paragraphIndex: number;
+    textOffset: number;
+  }>>(savedHighlights);
 
   // 格式化时间
   const formatTime = (seconds: number) => {
@@ -152,9 +261,9 @@ export default function IeltsReadingPractice() {
       const userAnswer = (answers[question.id] || '').trim().toLowerCase();
       const correctAnswer = question.answer.toLowerCase();
       const isCorrect = userAnswer === correctAnswer;
-      
+
       if (isCorrect) correctCount++;
-      
+
       feedback[question.id] = {
         isCorrect,
         correctAnswer: question.answer
@@ -162,14 +271,14 @@ export default function IeltsReadingPractice() {
     });
 
     const score = Math.round((correctCount / examplePassage.questions.length) * 100);
-    
+
     setResults({
       score,
       totalQuestions: examplePassage.questions.length,
       correctAnswers: correctCount,
       feedback
     });
-    
+
     setIsSubmitted(true);
   };
 
@@ -178,18 +287,53 @@ export default function IeltsReadingPractice() {
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
       setHighlightedText(selection.toString());
-      
+
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
-      
+
       setHighlightPosition({
         x: rect.left + window.scrollX + rect.width / 2,
         y: rect.bottom + window.scrollY
       });
-      
+
       setShowHighlightTooltip(true);
     } else {
       setShowHighlightTooltip(false);
+    }
+  };
+
+  // 处理高亮
+  const handleHighlight = async (highlight: {
+    start: number;
+    end: number;
+    color: string;
+    text: string;
+    paragraphIndex: number;
+    textOffset: number;
+  }) => {
+    // 添加到本地状态
+    setUserHighlights(prev => [...prev, highlight]);
+
+    // 创建表单数据
+    const form = new FormData();
+    form.append('intent', 'add_highlight');
+    form.append('text', highlight.text);
+    form.append('color', highlight.color);
+    form.append('paragraphIndex', highlight.paragraphIndex.toString());
+    form.append('textOffset', highlight.textOffset.toString());
+
+    // 提交高亮信息
+    try {
+      const response = await fetch('/ielts/practice', {
+        method: 'POST',
+        body: form
+      });
+
+      if (!response.ok) {
+        console.error('Failed to save highlight');
+      }
+    } catch (error) {
+      console.error('Error saving highlight:', error);
     }
   };
 
@@ -212,7 +356,7 @@ export default function IeltsReadingPractice() {
           <div className={`mr-4 font-medium ${timeRemaining < 300 ? 'text-red-600' : 'text-gray-700'}`}>
             剩余时间: {formatTime(timeRemaining)}
           </div>
-          
+
           {!isSubmitted ? (
             <button
               onClick={handleSubmit}
@@ -233,40 +377,18 @@ export default function IeltsReadingPractice() {
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* 文章阅读区 */}
-        <div className="lg:w-1/2 bg-white rounded-lg shadow-md p-6" onMouseUp={handleTextSelection}>
-          <h2 className="text-xl font-bold mb-4">{examplePassage.title}</h2>
-          <div className="prose max-w-none">
-            {examplePassage.content.split('\n\n').map((paragraph, index) => (
-              <p key={index} className="mb-4">
-                {paragraph}
-              </p>
-            ))}
-          </div>
-          
-          {/* 高亮工具提示 */}
-          {showHighlightTooltip && (
-            <div 
-              className="absolute bg-white shadow-lg rounded-lg p-2 z-10 flex"
-              style={{
-                top: `${highlightPosition.y}px`,
-                left: `${highlightPosition.x}px`,
-                transform: 'translateX(-50%)'
-              }}
-            >
-              <button 
-                onClick={lookupWord}
-                className="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded"
-              >
-                查词典
-              </button>
-              <button 
-                onClick={() => setShowHighlightTooltip(false)}
-                className="text-sm ml-2 text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-          )}
+        <div className="lg:w-1/2 bg-white rounded-lg shadow-md p-6">
+          <PassageReader
+            title={examplePassage.title}
+            content={examplePassage.content}
+            simpleMode={true}
+            onWordSelect={(word) => {
+              setHighlightedText(word);
+              lookupWord();
+            }}
+            onHighlight={handleHighlight}
+            highlights={userHighlights}
+          />
         </div>
 
         {/* 答题区 */}
@@ -277,7 +399,7 @@ export default function IeltsReadingPractice() {
               完成 {Object.keys(answers).length}/{examplePassage.questions.length}
             </div>
           </div>
-          
+
           {results && (
             <div className="mb-6 bg-gray-50 rounded-lg p-4">
               <div className="mb-2 flex justify-between">
@@ -291,28 +413,28 @@ export default function IeltsReadingPractice() {
                 <span>{results.correctAnswers}/{results.totalQuestions}</span>
               </div>
               <div className="text-sm text-gray-600 mt-2">
-                {results.score >= 70 ? '优秀！继续保持！' : 
-                 results.score >= 40 ? '继续努力，你可以做得更好！' : 
+                {results.score >= 70 ? '优秀！继续保持！' :
+                 results.score >= 40 ? '继续努力，你可以做得更好！' :
                  '不要气馁，多加练习！'}
               </div>
             </div>
           )}
-          
+
           <div className="space-y-6">
             {examplePassage.questions.map((question, index) => (
-              <div 
-                key={question.id} 
+              <div
+                key={question.id}
                 className={`p-4 border rounded-lg ${
-                  isSubmitted 
-                    ? results?.feedback[question.id]?.isCorrect 
-                      ? 'border-green-300 bg-green-50' 
+                  isSubmitted
+                    ? results?.feedback[question.id]?.isCorrect
+                      ? 'border-green-300 bg-green-50'
                       : 'border-red-300 bg-red-50'
                     : 'border-gray-200 hover:border-blue-300'
                 } ${bookmarkedQuestions.has(question.id) ? 'ring-2 ring-yellow-300' : ''}`}
               >
                 <div className="flex justify-between mb-2">
                   <span className="font-medium">问题 {question.questionNumber}</span>
-                  <button 
+                  <button
                     onClick={() => toggleBookmark(question.id)}
                     className={`text-sm ${bookmarkedQuestions.has(question.id) ? 'text-yellow-500' : 'text-gray-400 hover:text-gray-600'}`}
                     title={bookmarkedQuestions.has(question.id) ? "移除书签" : "添加书签"}
@@ -320,10 +442,10 @@ export default function IeltsReadingPractice() {
                     {bookmarkedQuestions.has(question.id) ? '★' : '☆'}
                   </button>
                 </div>
-                
+
                 <p className="text-gray-700 mb-2">{question.text}</p>
                 <p className="text-gray-600 text-sm italic mb-3">{question.context}</p>
-                
+
                 <div className="flex">
                   <input
                     type="text"
@@ -333,15 +455,15 @@ export default function IeltsReadingPractice() {
                     disabled={isSubmitted}
                     placeholder="输入答案..."
                     className={`px-3 py-2 border rounded-md w-full focus:outline-none focus:ring-2 ${
-                      isSubmitted 
-                        ? results?.feedback[question.id]?.isCorrect 
-                          ? 'border-green-300 focus:ring-green-200' 
+                      isSubmitted
+                        ? results?.feedback[question.id]?.isCorrect
+                          ? 'border-green-300 focus:ring-green-200'
                           : 'border-red-300 focus:ring-red-200'
                         : 'border-gray-300 focus:ring-blue-300'
                     }`}
                   />
                 </div>
-                
+
                 {isSubmitted && (
                   <div className="mt-2">
                     {results?.feedback[question.id]?.isCorrect ? (
@@ -359,14 +481,14 @@ export default function IeltsReadingPractice() {
               </div>
             ))}
           </div>
-          
+
           <div className="mt-8 border-t pt-6">
             <button
               onClick={handleSubmit}
               disabled={isSubmitted}
               className={`w-full py-3 rounded-md text-white font-medium ${
-                isSubmitted 
-                  ? 'bg-gray-400 cursor-not-allowed' 
+                isSubmitted
+                  ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-primary hover:bg-primary-dark'
               }`}
             >
@@ -377,4 +499,4 @@ export default function IeltsReadingPractice() {
       </div>
     </div>
   );
-} 
+}
