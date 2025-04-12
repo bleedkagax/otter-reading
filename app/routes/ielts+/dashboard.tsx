@@ -564,33 +564,7 @@ export default function IeltsDashboard() {
           浏览所有阅读文章
         </a>
       </section>
-      {/* 快速开始区域 */}
-      <section className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 rounded-lg shadow-md text-white text-center">
-        <h2 className="text-2xl font-bold mb-4">准备好提升你的雅思阅读能力了吗？</h2>
-        <p className="mb-6 max-w-2xl mx-auto">使用我们的AI生成功能创建真实的雅思阅读文章，或者从我们的文章库中选择已有的文章进行练习。</p>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link
-            to="/ielts/generate"
-            className="bg-white text-blue-700 px-6 py-3 rounded-md font-medium hover:bg-gray-100 transition-colors inline-flex items-center justify-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            AI生成文章
-          </Link>
-
-          <Link
-            to="/ielts/passages"
-            className="bg-transparent text-white border border-white px-6 py-3 rounded-md font-medium hover:bg-white/10 transition-colors inline-flex items-center justify-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-            浏览文章库
-          </Link>
-        </div>
-      </section>
     </div>
   )
 }

@@ -20,7 +20,6 @@ import { useToast } from './components/toaster.tsx'
 import { Button } from './components/ui/button.tsx'
 import { href as iconsHref } from './components/ui/icon.tsx'
 import { EpicToaster } from './components/ui/sonner.tsx'
-import { UserDropdown } from './components/user-dropdown.tsx'
 import {
 	useOptionalTheme,
 	useTheme,
@@ -199,14 +198,7 @@ function App() {
 					<nav className="flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap md:gap-8">
 						<Logo />
 						<div className="flex items-center gap-4">
-							{user && (
-								<Button asChild variant="outline">
-									<Link to="/ielts/dashboard">雅思阅读</Link>
-								</Button>
-							)}
-							{user ? (
-								<UserDropdown />
-							) : (
+							{!user && (
 								<Button asChild variant="default" size="lg">
 									<Link to="/login">Log In</Link>
 								</Button>
