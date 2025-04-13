@@ -149,18 +149,31 @@ export async function generateIeltsContent(
 ): Promise<ProcessedContent> {
   // 检查环境变量
   const apiKey = process.env.GEMINI_API_KEY
+  console.log('检查Gemini API密钥:', apiKey ? '密钥存在' : '密钥不存在')
 
-  if (!apiKey) {
-    throw new Error('环境变量中未设置Gemini API密钥')
+  if (apiKey) {
+    console.log('GEMINI_API_KEY 前缀:', apiKey.substring(0, 5) + '...')
+    console.log('GEMINI_API_KEY 长度:', apiKey.length)
+    console.log('GEMINI_API_KEY 是否为默认值:', apiKey === 'your-gemini-api-key-here' ? '是' : '否')
+  }
+
+  if (!apiKey || apiKey === 'your-gemini-api-key-here') {
+    throw new Error('环境变量中未设置有效的Gemini API密钥，请在系统环境变量或.env文件中设置GEMINI_API_KEY')
   }
 
   try {
+    console.log('开始初始Gemini客户端...')
     // 初始化Gemini客户端
     const genAI = new GoogleGenerativeAI(apiKey)
+    console.log('Gemini客户端初始化成功')
+
+    console.log('获取Gemini模型: gemini-pro')
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+    console.log('Gemini模型获取成功')
 
     // 准备问题类型
-    const questionTypes = options.questionTypes || [
+    // 注意: 这个变量目前没有被使用，但我们保留它以便将来可能的扩展
+    const _questionTypes = options.questionTypes || [
       'multiple_choice',
       'true_false_ng',
       'fill_blank'
@@ -209,14 +222,42 @@ export async function generateIeltsContent(
     `
 
     // 调用API生成内容
-    const result = await model.generateContent(prompt)
-    const responseText = result.response.text()
+    console.log('开始调用Gemini API生成内容...')
+    let responseText;
+    try {
+      const result = await model.generateContent(prompt)
+      console.log('Gemini API调用成功')
+      responseText = result.response.text()
+      console.log('获取到响应文本，长度:', responseText.length)
+      console.log('响应文本前100个字符:', responseText.substring(0, 100))
+    } catch (apiError) {
+      console.error('Gemini API调用失败:', apiError)
+      if (apiError instanceof Error) {
+        throw new Error(`Gemini API错误: ${apiError.message}`)
+      } else {
+        throw new Error(`Gemini API错误: ${String(apiError)}`)
+      }
+    }
 
     // 处理响应
     try {
+      console.log('开始解析响应...')
       const jsonMatch = responseText.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
+        console.error('无法从响应中提取JSON，原始响应:', responseText)
         throw new Error('无法从响应中提取JSON')
+      }
+
+      console.log('找到JSON字符串，长度:', jsonMatch[0].length)
+      console.log('JSON字符串前100个字符:', jsonMatch[0].substring(0, 100))
+
+      try {
+        const parsedData = JSON.parse(jsonMatch[0]) as unknown
+        console.log('JSON解析成功')
+      } catch (jsonError) {
+        console.error('JSON解析失败:', jsonError)
+        console.error('JSON字符串:', jsonMatch[0])
+        throw new Error(`JSON解析失败: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`)
       }
 
       const parsedData = JSON.parse(jsonMatch[0]) as unknown
@@ -258,6 +299,12 @@ export async function generateIeltsContent(
     }
   } catch (error) {
     console.error('调用Gemini API时出错:', error)
-    throw new Error('生成IELTS内容时出错')
+
+    // 提供更详细的错误信息
+    if (error instanceof Error) {
+      throw new Error(`生成IELTS内容时出错: ${error.message}`)
+    } else {
+      throw new Error(`生成IELTS内容时出错: ${String(error)}`)
+    }
   }
 }

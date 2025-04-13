@@ -3,7 +3,8 @@ import { Form, useActionData, useNavigation } from 'react-router'
 import { useState, useEffect } from 'react'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
-import { generateIeltsContent } from '#app/utils/gemini.server'
+// 使用 fetch API 直接调用 Gemini API
+import { generateIeltsContent } from '#app/utils/gemini-fetch.server'
 
 interface ActionData {
   success?: boolean;
@@ -43,6 +44,13 @@ export async function action({ request }: ActionFunctionArgs) {
       topic,
       difficulty,
       wordCount
+    }).catch(error => {
+      console.error('Gemini API错误:', error)
+      if (error instanceof Error) {
+        throw new Error(`生成内容失败: ${error.message}`)
+      } else {
+        throw new Error(`生成内容失败: ${String(error)}`)
+      }
     })
 
     // 创建新的文章记录
@@ -165,7 +173,7 @@ export default function GenerateContentPage() {
                     key={index}
                     type="button"
                     className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
-                    onClick={(e) => {
+                    onClick={() => {
                       const topicInput = document.getElementById('topic') as HTMLInputElement
                       if (topicInput) topicInput.value = topic
                     }}

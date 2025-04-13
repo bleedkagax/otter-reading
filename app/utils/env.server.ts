@@ -26,9 +26,12 @@ const schema = z.object({
 	AWS_REGION: z.string(),
 	AWS_ENDPOINT_URL_S3: z.string().url(),
 	BUCKET_NAME: z.string(),
-	
+
 	// Gemini API Configuration
 	GEMINI_API_KEY: z.string().optional(),
+
+	// 添加调试信息
+	_DEBUG_GEMINI_API_KEY: z.string().optional(),
 })
 
 declare global {
@@ -38,6 +41,13 @@ declare global {
 }
 
 export function init() {
+	// 添加调试信息
+	console.log('Initializing environment variables...');
+	console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+
+	// 将GEMINI_API_KEY复制到调试变量中
+	process.env._DEBUG_GEMINI_API_KEY = process.env.GEMINI_API_KEY ? 'exists' : 'not-exists';
+
 	const parsed = schema.safeParse(process.env)
 
 	if (parsed.success === false) {
@@ -48,6 +58,10 @@ export function init() {
 
 		throw new Error('Invalid environment variables')
 	}
+
+	// 添加更多调试信息
+	console.log('Environment variables initialized successfully');
+	console.log('GEMINI_API_KEY after initialization:', !!process.env.GEMINI_API_KEY);
 }
 
 /**
@@ -64,6 +78,7 @@ export function getEnv() {
 		MODE: process.env.NODE_ENV,
 		SENTRY_DSN: process.env.SENTRY_DSN,
 		ALLOW_INDEXING: process.env.ALLOW_INDEXING,
+		_DEBUG_GEMINI_API_KEY: process.env._DEBUG_GEMINI_API_KEY,
 	}
 }
 

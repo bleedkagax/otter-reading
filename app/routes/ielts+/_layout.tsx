@@ -131,102 +131,18 @@ export default function IeltsLayout() {
             </Link>
 
             <Link
-              to="/ielts/import"
+              to="/ielts/content-creation"
               className={`px-3 py-2.5 rounded-md text-sm hover:bg-notion-bg-gray transition-colors flex ${sidebarOpen ? 'items-center space-x-3' : 'justify-center'} w-full`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              {sidebarOpen && <span>导入PDF</span>}
+              {sidebarOpen && <span>创建内容</span>}
             </Link>
 
-            <Link
-              to="/ielts/generate"
-              className={`px-3 py-2.5 rounded-md text-sm hover:bg-notion-bg-gray transition-colors flex ${sidebarOpen ? 'items-center space-x-3' : 'justify-center'} w-full text-notion-text-blue`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              {sidebarOpen && <span>AI生成</span>}
-            </Link>
 
-            <Link
-              to="/ielts/learning-plan"
-              className={`px-3 py-2.5 rounded-md text-sm hover:bg-notion-bg-gray transition-colors flex ${sidebarOpen ? 'items-center space-x-3' : 'justify-center'} w-full`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              {sidebarOpen && <span>学习计划</span>}
-            </Link>
 
-            <div className="relative group w-full">
-              <Link
-                to="/ielts/vocabulary"
-                className={`px-3 py-2.5 rounded-md text-sm hover:bg-notion-bg-gray transition-colors flex ${sidebarOpen ? 'items-center justify-between' : 'justify-center'} w-full`}
-              >
-                {sidebarOpen ? (
-                  <>
-                    <div className="flex items-center space-x-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                      <span>词汇管理</span>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                )}
-              </Link>
-              <div className={`${sidebarOpen ? 'pl-10' : 'pl-2'} mt-1 space-y-1 hidden group-hover:block`}>
-                {sidebarOpen ? (
-                  <>
-                    <Link to="/ielts/vocabulary" className="block px-3 py-2 text-sm hover:bg-notion-bg-gray rounded-md">
-                      词汇列表
-                    </Link>
-                    <Link to="/ielts/vocabulary/review" className="block px-3 py-2 text-sm hover:bg-notion-bg-gray rounded-md">
-                      词汇复习
-                    </Link>
-                    <Link to="/ielts/vocabulary/test" className="block px-3 py-2 text-sm hover:bg-notion-bg-gray rounded-md">
-                      词汇测试
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/ielts/vocabulary" className="block p-2 text-sm hover:bg-notion-bg-gray rounded-md flex justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                    </Link>
-                    <Link to="/ielts/vocabulary/review" className="block p-2 text-sm hover:bg-notion-bg-gray rounded-md flex justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </Link>
-                    <Link to="/ielts/vocabulary/test" className="block p-2 text-sm hover:bg-notion-bg-gray rounded-md flex justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
 
-            <Link
-              to="/ielts/stats"
-              className={`px-3 py-2.5 rounded-md text-sm hover:bg-notion-bg-gray transition-colors flex ${sidebarOpen ? 'items-center space-x-3' : 'justify-center'} w-full`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              {sidebarOpen && <span>学习统计</span>}
-            </Link>
           </nav>
 
           {/* User Profile */}
@@ -258,39 +174,117 @@ export default function IeltsLayout() {
                   )}
                 </div>
 
-                {/* Dropdown Menu */}
-                {sidebarOpen && (
-                  <div className="absolute left-0 right-0 mt-1 bg-notion-bg-default border border-gray-200 rounded-md shadow-lg z-50 hidden group-hover:block">
-                    <div className="py-1">
-                      <Link to={`/users/${data.user.username}`} className="block px-4 py-2 text-sm hover:bg-notion-bg-gray">
-                        <div className="flex items-center space-x-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          <span>个人资料</span>
-                        </div>
-                      </Link>
-                      <Link to={`/users/${data.user.username}/notes`} className="block px-4 py-2 text-sm hover:bg-notion-bg-gray">
-                        <div className="flex items-center space-x-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          <span>笔记</span>
-                        </div>
-                      </Link>
-                      <Form action="/logout" method="POST" className="block">
-                        <button type="submit" className="w-full text-left px-4 py-2 text-sm hover:bg-notion-bg-gray">
-                          <div className="flex items-center space-x-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                {/* Dropdown Menu - 优化后的下拉菜单 */}
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 hidden group-hover:block">
+                  <div className="p-2 space-y-1">
+                    <Link to={`/users/${data.user.username}`} className="block px-4 py-3 text-sm hover:bg-gray-50 rounded-md transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span className="font-medium">个人资料</span>
+                      </div>
+                    </Link>
+                    <Link to={`/users/${data.user.username}/notes`} className="block px-4 py-3 text-sm hover:bg-gray-50 rounded-md transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span className="font-medium">笔记</span>
+                      </div>
+                    </Link>
+                    {/* 主题切换菜单 */}
+                    <div className="px-4 py-2 text-sm text-gray-600">
+                      <div className="font-medium mb-2">主题设置</div>
+                      <div className="space-y-1">
+                        {/* 系统主题 */}
+                        <Form action="/resources/theme-switch" method="POST" className="block">
+                          <input type="hidden" name="redirectTo" value="/ielts/dashboard" />
+                          <input type="hidden" name="theme" value="system" />
+                          <button
+                            type="submit"
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center space-x-2 ${!data.userPrefs.theme ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span>退出登录</span>
-                          </div>
-                        </button>
-                      </Form>
+                            <span>系统默认</span>
+                          </button>
+                        </Form>
+
+                        {/* 亮色主题 */}
+                        <Form action="/resources/theme-switch" method="POST" className="block">
+                          <input type="hidden" name="redirectTo" value="/ielts/dashboard" />
+                          <input type="hidden" name="theme" value="light" />
+                          <button
+                            type="submit"
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center space-x-2 ${data.userPrefs.theme === 'light' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <span>亮色模式</span>
+                          </button>
+                        </Form>
+
+                        {/* 暗色主题 */}
+                        <Form action="/resources/theme-switch" method="POST" className="block">
+                          <input type="hidden" name="redirectTo" value="/ielts/dashboard" />
+                          <input type="hidden" name="theme" value="dark" />
+                          <button
+                            type="submit"
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center space-x-2 ${data.userPrefs.theme === 'dark' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                            <span>暗色模式</span>
+                          </button>
+                        </Form>
+
+                        {/* 太阳亮色主题 */}
+                        <Form action="/resources/theme-switch" method="POST" className="block">
+                          <input type="hidden" name="redirectTo" value="/ielts/dashboard" />
+                          <input type="hidden" name="theme" value="solarized-light" />
+                          <button
+                            type="submit"
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center space-x-2 ${data.userPrefs.theme === 'solarized-light' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                            </svg>
+                            <span>Solarized Light</span>
+                          </button>
+                        </Form>
+
+                        {/* 极简主题 */}
+                        <Form action="/resources/theme-switch" method="POST" className="block">
+                          <input type="hidden" name="redirectTo" value="/ielts/dashboard" />
+                          <input type="hidden" name="theme" value="minimal" />
+                          <button
+                            type="submit"
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center space-x-2 ${data.userPrefs.theme === 'minimal' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                            <span>Minimal</span>
+                          </button>
+                        </Form>
+                      </div>
                     </div>
+                    <Form action="/logout" method="POST" className="block">
+                      <button type="submit" className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 rounded-md transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span className="font-medium">退出登录</span>
+                        </div>
+                      </button>
+                    </Form>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           ) : (
@@ -304,44 +298,46 @@ export default function IeltsLayout() {
             </div>
           )}
 
-          {/* Theme Switch */}
-          <div className={`mt-auto pt-6 pb-4 ${sidebarOpen ? '' : 'flex justify-center'}`}>
-            <div className={sidebarOpen ? '' : 'hidden'}>
-              <ThemeSwitch userPreference={data.userPrefs.theme} />
+          {/* Theme Switch - 仅在用户未登录时显示 */}
+          {!data.user && (
+            <div className={`mt-auto pt-6 pb-4 ${sidebarOpen ? '' : 'flex justify-center'}`}>
+              <div className={sidebarOpen ? '' : 'hidden'}>
+                <ThemeSwitch userPreference={data.userPrefs.theme} />
+              </div>
+              {!sidebarOpen && (
+                <button
+                  className="p-2 rounded-md hover:bg-notion-bg-gray/70 transition-colors"
+                  onClick={() => {
+                    // 切换主题
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/resources/theme-switch';
+
+                    const themeInput = document.createElement('input');
+                    themeInput.type = 'hidden';
+                    themeInput.name = 'theme';
+                    // 切换为下一个主题
+                    themeInput.value = data.userPrefs.theme === 'light' ? 'dark' : 'light';
+
+                    form.appendChild(themeInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+                  }}
+                >
+                  {data.userPrefs.theme === 'light' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
-            {!sidebarOpen && (
-              <button
-                className="p-2 rounded-md hover:bg-notion-bg-gray/70 transition-colors"
-                onClick={() => {
-                  // 切换主题
-                  const form = document.createElement('form');
-                  form.method = 'POST';
-                  form.action = '/resources/theme-switch';
-
-                  const themeInput = document.createElement('input');
-                  themeInput.type = 'hidden';
-                  themeInput.name = 'theme';
-                  // 切换为下一个主题
-                  themeInput.value = data.userPrefs.theme === 'light' ? 'dark' : 'light';
-
-                  form.appendChild(themeInput);
-                  document.body.appendChild(form);
-                  form.submit();
-                  document.body.removeChild(form);
-                }}
-              >
-                {data.userPrefs.theme === 'light' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                )}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </aside>
 
@@ -356,8 +352,7 @@ export default function IeltsLayout() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h1 className="text-xl font-medium">雅思阅读文章库</h1>
-          <div className="text-sm text-notion-text-gray ml-2">浏览和练习雅思阅读文章</div>
+          {/* 标题已移除 */}
         </div>
         <main className="container mx-auto px-6 notion-page">
           <Outlet />

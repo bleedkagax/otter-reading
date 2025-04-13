@@ -36,13 +36,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   })
 
-  // 获取用户词汇学习情况
-  const vocabularyStats = await prisma.$transaction([
-    prisma.ieltsUserVocabulary.count({ where: { userId, mastered: false } }),
-    prisma.ieltsUserVocabulary.count({ where: { userId, mastered: true } }),
-    prisma.ieltsUserVocabulary.count({ where: { userId, mastered: false } }), // 暂时使用mastered字段
-    prisma.ieltsUserVocabulary.count({ where: { userId } })
-  ])
+  // 词汇统计已移除
 
   // 获取每周学习进度
   const today = new Date()
@@ -105,7 +99,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     userStats,
     recentAttempts,
     recommendedPassages,
-    vocabularyStats,
     dailyActivity,
     questionTypeAccuracy,
     progressPercentage,
@@ -119,7 +112,6 @@ export default function IeltsDashboard() {
     userStats,
     recentAttempts,
     recommendedPassages,
-    vocabularyStats,
     dailyActivity,
     questionTypeAccuracy,
     progressPercentage,
@@ -129,19 +121,43 @@ export default function IeltsDashboard() {
 
   const [activeTab, setActiveTab] = useState('overview')
 
+  // 计算本周学习数据
+  const today = new Date()
+  const oneWeekAgo = new Date(today)
+  oneWeekAgo.setDate(today.getDate() - 7)
+
+  // 过滤最近一周的尝试
+  const lastWeekAttempts = recentAttempts.filter(attempt => {
+    const attemptDate = new Date(attempt.startedAt)
+    return attemptDate >= oneWeekAgo
+  })
+
+  // 计算本周统计
+  const weeklyStats = {
+    attemptsCount: lastWeekAttempts.length,
+    readingTime: lastWeekAttempts.reduce((sum, attempt) => sum + (attempt.timeSpent || 0), 0) / 60, // 转换为分钟
+    averageScore: lastWeekAttempts.length > 0
+      ? lastWeekAttempts.reduce((sum, attempt) => {
+          const correctCount = attempt.responses?.filter(r => r.isCorrect)?.length || 0
+          const totalCount = attempt.responses?.length || 0
+          return sum + (totalCount > 0 ? (correctCount / totalCount) * 100 : 0)
+        }, 0) / lastWeekAttempts.length
+      : 0
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">雅思阅读学习中心</h1>
+        <h1 className="text-3xl font-bold">学习仪表盘</h1>
         <div className="flex space-x-2">
           <Link
-            to="/ielts/generate"
+            to="/ielts/content-creation"
             className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors shadow-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            AI生成文章
+            创建内容
           </Link>
         </div>
       </div>
@@ -154,12 +170,7 @@ export default function IeltsDashboard() {
         >
           学习概览
         </button>
-        <button
-          className={`py-2 px-4 font-medium ${activeTab === 'vocabulary' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          onClick={() => setActiveTab('vocabulary')}
-        >
-          词汇进度
-        </button>
+
         <button
           className={`py-2 px-4 font-medium ${activeTab === 'performance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
           onClick={() => setActiveTab('performance')}
@@ -246,62 +257,48 @@ export default function IeltsDashboard() {
               </div>
             </div>
           </div>
-        </>
-      )}
 
-      {activeTab === 'vocabulary' && (
-        <>
-          {/* 词汇学习统计 */}
+          {/* 本周学习概况 */}
           <section className="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 className="text-xl font-semibold mb-4">词汇学习统计</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-green-50 p-4 rounded-lg text-center">
-                <p className="text-gray-600">已掌握</p>
-                <p className="text-2xl font-bold text-green-600">{vocabularyStats[1]}</p>
+            <h2 className="text-xl font-semibold mb-4">本周学习概况</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="border p-4 rounded-lg bg-blue-50">
+                <p className="text-gray-600 mb-1">练习次数</p>
+                <p className="text-2xl font-bold text-blue-700">{weeklyStats.attemptsCount}</p>
               </div>
-              <div className="bg-yellow-50 p-4 rounded-lg text-center">
-                <p className="text-gray-600">学习中</p>
-                <p className="text-2xl font-bold text-yellow-600">{vocabularyStats[0]}</p>
+              <div className="border p-4 rounded-lg bg-green-50">
+                <p className="text-gray-600 mb-1">阅读时间</p>
+                <p className="text-2xl font-bold text-green-700">{Math.round(weeklyStats.readingTime)} 分钟</p>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg text-center">
-                <p className="text-gray-600">困难词</p>
-                <p className="text-2xl font-bold text-red-600">{vocabularyStats[2]}</p>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-lg text-center">
-                <p className="text-gray-600">总词汇量</p>
-                <p className="text-2xl font-bold text-blue-600">{vocabularyStats[3]}</p>
+              <div className="border p-4 rounded-lg bg-purple-50">
+                <p className="text-gray-600 mb-1">平均分数</p>
+                <p className="text-2xl font-bold text-purple-700">{Math.round(weeklyStats.averageScore)}%</p>
               </div>
             </div>
 
             <div className="mt-6">
-              <h3 className="text-lg font-medium mb-3">词汇掌握进度</h3>
-              <div className="w-full bg-gray-200 rounded-full h-4">
-                <div
-                  className="bg-green-600 h-4 rounded-full"
-                  style={{ width: `${vocabularyStats[3] > 0 ? (vocabularyStats[1] / vocabularyStats[3] * 100) : 0}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between mt-2 text-sm text-gray-600">
-                <span>0%</span>
-                <span>{vocabularyStats[3] > 0 ? Math.round(vocabularyStats[1] / vocabularyStats[3] * 100) : 0}% 已掌握</span>
-                <span>100%</span>
-              </div>
-            </div>
+              <h3 className="font-medium mb-2">快速操作</h3>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="/ielts/passages"
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
+                >
+                  浏览文章
+                </a>
 
-            <div className="mt-6 text-center">
-              <Link
-                to="/ielts/vocabulary"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800"
-              >
-                查看词汇库
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+                <a
+                  href="/ielts/content-creation"
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition-colors"
+                >
+                  创建内容
+                </a>
+              </div>
             </div>
           </section>
         </>
       )}
+
+
 
       {activeTab === 'performance' && (
         <>
