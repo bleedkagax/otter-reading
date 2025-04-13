@@ -394,7 +394,7 @@ export default function VocabularyPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {vocab.passage ? (
                           <a
-                            href={IELTS_ROUTES.passageRead(vocab.passage.id)}
+                            href={IELTS_ROUTES.passagePractice(vocab.passage.id)}
                             className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
                           >
                             {vocab.passage.title}

@@ -443,7 +443,7 @@ export default function IeltsDashboard() {
                   <div className="mt-3 flex justify-end">
                     {attempt.completedAt ? (
                       <Link
-                        to={`/ielts/passages/${attempt.passageId}/read`}
+                        to={`/ielts/passages/${attempt.passageId}/practice`}
                         className="text-blue-600 hover:text-blue-800 text-sm"
                       >
                         查看文章
@@ -515,18 +515,12 @@ export default function IeltsDashboard() {
 
                 <div className="flex justify-between items-center">
                   <span className="bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">{passage.topic}</span>
-                  <div className="flex space-x-2">
-                    <Link
-                      to={`/ielts/passages/${passage.id}/read`}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      阅读
-                    </Link>
+                  <div>
                     <Link
                       to={`/ielts/passages/${passage.id}/practice`}
-                      className="text-green-600 hover:text-green-800 text-sm"
+                      className="bg-primary text-white px-3 py-1 rounded-md text-sm hover:bg-primary-dark"
                     >
-                      练习
+                      开始练习
                     </Link>
                   </div>
                 </div>

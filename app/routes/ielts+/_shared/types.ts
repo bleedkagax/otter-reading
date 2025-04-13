@@ -105,7 +105,6 @@ export const IELTS_ROUTES = {
   stats: '/ielts/stats',
   practice: '/ielts/practice',
   import: '/ielts/import',
-  passageRead: (passageId: string) => `/ielts/passages/${passageId}/read`,
   passagePractice: (passageId: string) => `/ielts/passages/${passageId}/practice`,
   passageTest: (passageId: string) => `/ielts/passages/${passageId}/test`,
 }

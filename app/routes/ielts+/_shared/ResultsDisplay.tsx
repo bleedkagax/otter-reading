@@ -110,10 +110,10 @@ export function ResultsDisplay({
 
         <div className="mt-8 flex justify-center space-x-4">
           <button
-            onClick={() => navigate(IELTS_ROUTES.passageRead(passage.id))}
+            onClick={() => navigate(IELTS_ROUTES.passagePractice(passage.id))}
             className="px-4 py-2 border border-border rounded-md hover:bg-muted"
           >
-            返回阅读
+            返回文章
           </button>
 
           <button

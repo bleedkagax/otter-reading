@@ -159,7 +159,7 @@ export default function ReadPassage() {
   const [wordContext, setWordContext] = useState('')
   const [showDictionary, setShowDictionary] = useState(false)
   const [notification, setNotification] = useState<{text: string, type: 'success' | 'error'} | null>(null)
-  const [fontSize, setFontSize] = useState<'text-sm' | 'text-base' | 'text-lg'>('text-base')
+  const [fontSize, setFontSize] = useState<'text-base' | 'text-lg' | 'text-xl'>('text-lg')
   const theme = useTheme()
   const vocabularyFetcher = useFetcher<VocabularyFetcherData>()
   const [wordDefinition, setWordDefinition] = useState<DictionaryEntry[] | null>(null)
@@ -231,26 +231,26 @@ export default function ReadPassage() {
   }
 
   // Change font size
-  const changeFontSize = (size: 'text-sm' | 'text-base' | 'text-lg') => {
+  const changeFontSize = (size: 'text-base' | 'text-lg' | 'text-xl') => {
     setFontSize(size)
   }
 
   return (
     <div className="min-h-screen bg-notion-bg-default text-notion-text-default transition-colors duration-200">
-      {/* Navigation header - Notion style */}
-      <header className="sticky top-0 z-10 bg-notion-bg-default border-b border-gray-200 shadow-sm transition-colors duration-200">
-        <div className="notion-page flex justify-between items-center py-3">
+      {/* Navigation header - Improved style */}
+      <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm transition-colors duration-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
           <div className="flex items-center gap-3">
             <a
               href="/ielts/passages"
-              className="text-notion-text-gray hover:text-notion-text-default transition-colors p-1 rounded hover:bg-notion-bg-gray"
+              className="text-gray-500 hover:text-gray-800 transition-colors p-1.5 rounded-full hover:bg-gray-100"
               aria-label="Back to list"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </a>
-            <h1 className="notion-title truncate max-w-md">
+            <h1 className="text-xl font-semibold truncate max-w-md">
               {passage.title}
             </h1>
           </div>
@@ -259,7 +259,7 @@ export default function ReadPassage() {
             {/* Reading settings */}
             <div className="relative group">
               <button
-                className="notion-block flex items-center gap-1 px-3 py-1.5 rounded-md text-sm"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors"
                 aria-label="Reading settings"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -269,34 +269,55 @@ export default function ReadPassage() {
                 <span>Settings</span>
               </button>
 
-              <div className="notion-floating-menu absolute right-0 mt-2 w-48 hidden group-hover:block">
-                <div className="py-2 px-3">
-                  <p className="text-xs font-medium mb-2 text-notion-text-gray">Font Size</p>
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => changeFontSize('text-sm')}
-                      className={`px-2 py-1 rounded text-xs ${
-                        fontSize === 'text-sm'
-                          ? 'bg-notion-bg-blue text-notion-text-blue'
-                          : 'bg-notion-bg-gray text-notion-text-gray'
-                      }`}
-                    >Small</button>
+              <div className="notion-floating-menu absolute right-0 mt-2 w-56 hidden group-hover:block bg-white shadow-lg border border-gray-200 rounded-lg">
+                <div className="py-3 px-4">
+                  <p className="text-sm font-medium mb-3 text-gray-700">Font Size</p>
+                  <div className="flex flex-col gap-2 mb-3">
                     <button
                       onClick={() => changeFontSize('text-base')}
-                      className={`px-2 py-1 rounded text-xs ${
+                      className={`px-3 py-2 rounded-md text-sm flex items-center justify-between ${
                         fontSize === 'text-base'
-                          ? 'bg-notion-bg-blue text-notion-text-blue'
-                          : 'bg-notion-bg-gray text-notion-text-gray'
+                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          : 'hover:bg-gray-50 text-gray-700'
                       }`}
-                    >Medium</button>
+                    >
+                      <span>Normal</span>
+                      {fontSize === 'text-base' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
                     <button
                       onClick={() => changeFontSize('text-lg')}
-                      className={`px-2 py-1 rounded text-xs ${
+                      className={`px-3 py-2 rounded-md text-sm flex items-center justify-between ${
                         fontSize === 'text-lg'
-                          ? 'bg-notion-bg-blue text-notion-text-blue'
-                          : 'bg-notion-bg-gray text-notion-text-gray'
+                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          : 'hover:bg-gray-50 text-gray-700'
                       }`}
-                    >Large</button>
+                    >
+                      <span>Large</span>
+                      {fontSize === 'text-lg' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => changeFontSize('text-xl')}
+                      className={`px-3 py-2 rounded-md text-sm flex items-center justify-between ${
+                        fontSize === 'text-xl'
+                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <span>X-Large</span>
+                      {fontSize === 'text-xl' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -304,10 +325,10 @@ export default function ReadPassage() {
 
             <button
               onClick={toggleDictionary}
-              className={`notion-block flex items-center gap-1 px-3 py-1.5 rounded-md text-sm ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors ${
                 showDictionary
-                  ? 'bg-notion-bg-blue text-notion-text-blue'
-                  : ''
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
               }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -318,7 +339,7 @@ export default function ReadPassage() {
 
             <a
               href={`/ielts/passages/${passage.id}/practice`}
-              className="notion-block flex items-center gap-1 px-3 py-1.5 rounded-md text-sm bg-notion-bg-blue text-notion-text-blue hover:bg-notion-bg-blue/80 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
               title="Switch to practice mode with questions"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -345,11 +366,11 @@ export default function ReadPassage() {
         </div>
       )}
 
-      <div className="notion-page py-8">
-        {/* Main reading area - Notion style */}
-        <div className="notion-container shadow-sm overflow-hidden transition-colors duration-200">
-          <div className="p-6 md:p-8">
-            <div className={`notion-reader-container ${fontSize}`}>
+      {/* Main reading area - Notion style */}
+      <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="notion-container shadow-sm overflow-hidden transition-colors duration-200 bg-white">
+          <div className="p-4 md:p-8 lg:p-10">
+            <div className={`notion-reader-container ${fontSize} max-w-none`}>
               <PassageReader
                 title={passage.title}
                 content={passage.content}
